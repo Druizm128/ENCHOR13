@@ -1,0 +1,406 @@
+---
+title: 'Actualización de la base de datos del MARCEG V2.0'
+author: "Dante Ruiz"
+date: "7 de diciembre de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introducción
+
+El Modelo de Agentes Rurales en un Contexto de Equilibrio General (MARCEG)es una herramienta para analizar el impacto de políticas públicas económicas, sociales, ambientales y tecnológicas, así como de cambio climático en la economía rural. El modelo permite visualizar de manera simultánea el impacto de las políticas en variables como la producción, ingreso, gasto, producto interno bruto y cambios en el uso de suelo.
+La unidad de estudio del MARCEG son los hogares rurales, los cuales pueden ser consumidores y/o productores. Así, el modelo plantea un problema de optimización donde el hogar maximiza su ingreso a partir de la maximización del beneficio (ganancias) de su producción. Posteriormente, el hogar maximiza su utilidad sujeto a su ingreso total máximo. 
+Así el MARCEG, consiste en un problema de optimización no lineal en un sistema de ecuaciones que permiten caracterizar el comportamiento de los hogares rurales a nivel de entidad federativa, región, localidad y mercados de factores productivos (tierra, trabajo, capital), bienes y servicios. Los parámetros de dichas ecuaciones se deben calibrar con información real para que puedan representar los patrones de la economía rural en México. Originalmente, cuando se diseñó el MARCEG V2.0 en 2015, la base de datos que se utilizó para calibrar el MARCEG fue la **Encuesta Nacional a Hogares Rurales (ENHRUM) de 2003** que desarrolló el Colegio de México (COLMEX).
+
+La ENHRUM se diseñó con el objetivo de capturar características generales de los hogares rurales mexicanos como su ingreso, gasto, actividades productivas e información sobre migración. Las actividades productivas rurales consideradas son la agricultura, la ganadería, los recursos naturales y la de bienes y servicios.  La unidad de estudio es el hogar y se construyó una muestra de 1,546 hogares en 80 localidades distribuidas en 24 zonas geográficas.
+
+Considerando lo anterior, se busca actualizar la base de datos con la que se calibra el MARCEG utilizando la **Encuesta CONEVAL a hogares rurales de México 2013 (ENCHOR)**. La encuesta se realizó a una muestra representativa nacional 2300 hogares en localidades de 500 a 2,499 habitantes. El propósito de la encuesta es determinar una línea base de la capacidad productiva de los hogares rurales del país, al inicio de la implementación de la Cruzada contra el Hambre. La estructura de la encuesta es similar a la de la ENHRUM y aplicó cuestionarios relacionados a producción de cultivos, ganadería, bienes y servicios, recursos naturales y otros ingresos y gasto.
+
+## Objetivo
+
+El propósito de este documento es documentar el procedimiento para procesar y limpiar las bases de datos originales de la Encuesta Coneval a Hogares Rurales 2013 (ENCHOR), para que se puedan utilizar en el MARCEG. De esta manera, se documentan observaciones a la base de datos, la descripción de los pasos y el código para obtener las tablas que requiere el modelo. El software que se utiliza para lograr este propósito de R-STATISTICS, un paquete estadístico open source.
+
+## Índice del documento
+
+* Introducción
+* Objetivo
+* Fuentes de información
+* Configuración de R
+    + Librerías
+    + Funciones
+* Procesamiento y limpieza de datos
+    + Ganadería
+
+## Fuentes de información
+
+La base de datos de la ENCHOR 2013 se puede descargar del portal [CONEVAL](http://www.coneval.org.mx/Informes/Evaluacion/ENCHOR_2013/ENCHOR_2013_DTA/ENCHOR_2013_DTA.zip). El archivo comprimido contiene una carpeta con  la base de datos de hogares, una base de datos de localidades y catalogos. Es preciso mencionar que las tablas de las bases de datos vienen en formato STATA.
+
+Para el propósito de este proyecto se utilizarán la base de hogares y los catalogos, los cuales tienen la siguiente estructura.
+
+* __Base de Hogares_DTA__
+    + Activos
+    + Ahorrocb
+    + Ahorrorp
+    + Ahorrosf
+    + Alim
+    + Bys
+    + Contaculti
+    + Containv
+    + Contasol
+    + Contasoltenen
+    + Credifuente
+    + Credifuenteh
+    + Credigasto
+    + Crediprestam
+    + Cultian_oi
+    + Cultian_pv
+    + Cultipe
+    + Eventosin
+    + Otrosing_bd
+    + Otrosing_ca
+    + Otrosing_oig
+    + Otrosing_prov
+    + Otrosing_ps
+    + Otrosing_serv
+    + Parcelanph
+    + Parcelaph
+    + Parcelariego
+    + Portada
+    + Produccion_ganade_a
+    + Produccion_ganade_ta
+    + Productos_ganade
+    + Recursosnat
+    + Resultadoh
+    + Resultadoi
+    + Seguros
+    + Smaiz
+    + Sociodem
+    + Sueltas
+    + Vivienda 
+ 
+* __Cuestionarios__
+    + 1.PORTADA
+    + 2.SOCIODEMOGRAFIA
+    + 3.PARCELAS
+    + 4.CULTIVOS ANUALES
+    + 5.CULTIVOS PERMANENTES
+    + 6.CONTABILIDAD DE CULTIVOS
+    + 7.GANADERIA 
+    + 8.ACTIVOS
+    + 9.BIENES Y SERVICIOS
+    + 10.RECURSOS NATURALES
+    + 11.VIVIENDA
+    + 12.CRÉDITO
+    + 13.AHORRO
+    + 14.OTROS INGRESOS Y GASTOS
+    + 15.EVENTOS INESPERADOS
+    + 16.SEGUROS  
+    + 17.ALIMENTACIÓN 
+    + 18.RESULTADO DE LA ENTREVISTA
+
+
+## Configuración de R
+
+En esta sección se especifican las librerías que se requieren instalar y cargar en la distribución de R. Asimismo, se indican las funciones diseñadas ad-hoc para simplificar el código de este proyecto.
+
+#### Librerías
+
+Las siguientes librerías se utilizan para añadir funcionalidades especiales a la distribución base de R para facilitar el procesamiento y limpieza de bases de datos. Se tienen que instalar previo y cargar previo a ejecutar el código de este documento. 
+
+```{r, message= FALSE}
+# Para instalar las liberías borrar el símbolo de # en las siguientes tres filas. Re introducir el símbolo # una vez instaladas.
+# install.packages("haven")
+# install.packages("dplyr")
+# install.packages("haven")
+
+# Cargar las librerías en el espacio de trabajo
+library(haven) # Librería para que R pueda leer bases de datos en STATA
+library(dplyr)   # Librería con un sintaxis especial para manipular tablas (data frames)
+library(tidyr)   # Librería con funciones para limpiar y estructurar tablas (data frames) 
+```
+
+#### Funciones
+
+Las siguientes funciones fueron definidas para simplificar tareas de procesamiento de las bases de datos.
+
+* __procesaSTATA( "nombreArchivo" )__. Es una función  que de la carpeta Base de Hogares_DTA lee en R un archivo en formato STATA, lo carga en el espacio de trabajo, y dentro de la carpeta Bases_Hogares_CSV lo guarda en un archivo CSV para poder abrirlo en EXCEL. La función recibe un argumento en formato string, es decir entre " " con el nombre del archvio. Es preciso mencionar que no se tiene que indicar la extensión del archivo dta.
+
+```{r}
+procesarSTATA <- function(nombreArchivo){
+                    # Area de oportunidad. Ver como en windows se puede abreviar el working directory para no tener que escribir toda la ruta.
+                    tablaSTATA = read_dta(paste("C:/Users/dante.ruiz/Documents/MARCEG/ENCHOR013/Base de Hogares_DTA/",nombreArchivo,".dta", sep = ""))
+                    write.csv(tablaSTATA, file = paste("C:/Users/dante.ruiz/Documents/MARCEG/ENCHOR013/Bases_Hogares_CSV/",nombreArchivo,".csv", sep = ""))
+                    return(tablaSTATA)                    
+}
+```
+
+
+```{r}
+guardarTablaProcesada <- function(tabla){
+                                          nombreArchivo <- deparse(substitute(tabla))  
+                                          write.csv(tabla, file = paste("C:/Users/dante.ruiz/Documents/MARCEG/ENCHOR013/Bases_Hogares_Procesadas/",nombreArchivo,".csv", sep = ""))
+                                                  }
+```
+
+
+## Procesamiento y limpieza de datos
+
+### Ganadería
+
+Las siguientes bases de datos corresponden a la SECCION 7. GANADERIA de la ENCHOR.
+Observación: Esta base datos es sobre los animales que los hogares han tenido de noviembre de 2012 a octubre de 2013.
+
+#### Catálogos
+
+Se hicieron los siguientes catálogos para clasificar campos en la base de datos: 
+
+* Catalogo_grupo_animal
+* Catalogo_animales
+```{r}
+cat_gpo_animal <- read.csv("C:/Users/dante.ruiz/Documents/MARCEG/ENCHOR013/Catalogos/catalogo_grupo_animal.csv", colClasses = c("character","character"))
+cat_animal <- read.csv("C:/Users/dante.ruiz/Documents/MARCEG/ENCHOR013/Catalogos/catalogo_animales.csv", colClasses = c("character","character"))
+```
+
+**Produccion_ganade_a**
+
+Esta primera base de datos incluye las preguntas de los cuadros siguientes:
+* Cuadro 7A. Tipo de Animal
+* Cuadro 7B. Contabilidad
+* Cuadro 7C. Compras
+* Cuadro 7D. Ventas
+
+```{r}
+prod_ganade_a <- procesarSTATA("Produccion_ganade_a")
+names(prod_ganade_a)
+```
+
+Con la información de esta base de datos se va a construir una nueva tabla de ganadería con información de la producción con los campos que requiere el MARCEG.
+
+```{r}
+
+
+ganaderia_produccion  <- prod_ganade_a %>%
+                                    select(cons,          # número de cuestionario
+                                           edo,           # clave estado
+                                           mun,           # clave municipio
+                                           loc,           # clave localidad
+                                           grupo,         # clave grupo 
+                                           s7c7ap01,      # clave animal 
+                                           s7c7bp08,      # num animales final 2013
+                                           s7c7bp09,      # dinero animales final 2013
+                                           s7c7dp01,      # num animales vendidos en el periodo
+                                           s7c7dp02,      # precio de venta
+                                           s7c7dp03a,     # monto de la venta en PESOS (888 no sabe)
+                                           s7c7dp03b,      # 01 venta por cabeza o 02 venta total
+                                           s7c7dp05,       # vendió dentro/fuera localidad
+                                           s7c7dp07_lc,    # clave localidad
+                                           s7c7dp08_mc,    # clave municipio de la localidad
+                                           s7c7dp09_edo,   # clave estado de mpio y localidad
+                                           s7c7dp11       # gasto en transporte para venta animales 
+                                           )
+# Hacer el join de catálogos
+
+
+#Guardar la tabla ganadería en la carpeta Bases_Hogares_Procesadas 
+guardarTablaProcesada(ganaderia_produccion)
+
+```
+
+
+
+
+**Produccion_ganade_ta**
+
+En esta segunda base se incluyen preguntas de los siguientes cuadros:
+*Cuadro 7E. Alimentación de los animales
+*Cuadro 7F. Pastos e insumos
+*Cuadro 7G. Mano de obra
+*Cuadro 7H. Apoyo gubernamental
+*Observaciones: Las preguntas de los cuadros 7E a 7H se aplican por grupo de animal
+```{r}
+prod_ganade_ta <- procesarSTATA("Produccion_ganade_ta")
+names(prod_ganade_ta)
+```
+
+
+```{r}
+ganaderia_fact_prod  <- prod_ganade_ta %>%
+                                    select(cons,          # número de cuestionario
+                                           edo,           # clave estado
+                                           mun,           # clave municipio
+                                           loc,           # clave localidad
+                                           s7c7gp01,      # Grupo animal
+                                           
+                                           s7c7gp02,      # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
+                                           
+                                           s7c7gp03a,     # Persona A: miembro # del hogar
+                                           s7c7gp03b,     # Persona B: miembro # del hogar
+                                           s7c7gp03c,     # Persona C: miembro # del hogar
+                                           s7c7gp03d,     # Persona D: miembro # del hogar
+                                           s7c7gp03e,     # Persona E: miembro # del hogar
+                                           s7c7gp04a,     # Persona A: número horas o minutos al día le trabajó
+                                           s7c7gp04b,     # Persona B: número horas o minutos al día le trabajó
+                                           s7c7gp04c,     # Persona C: número horas o minutos al día le trabajó
+                                           s7c7gp04d,     # Persona D: número horas o minutos al día le trabajó
+                                           s7c7gp04e,     # Persona E: número horas o minutos al día le trabajó
+                                           s7c7gp04_ca,   # Persona A: código horas (1) o minutos (2)
+                                           s7c7gp04_cb,   # Persona B: código horas (1) o minutos (2)
+                                           s7c7gp04_cc,   # Persona C: código horas (1) o minutos (2)
+                                           s7c7gp04_cd,   # Persona D: código horas (1) o minutos (2)
+                                           s7c7gp04_ce,   # Persona E: código horas (1) o minutos (2)
+                                           s7c7gp05a,     # Persona A: número de días a la semana
+                                           s7c7gp05b,     # Persona B: número de días a la semana
+                                           s7c7gp05c,     # Persona C: número de días a la semana
+                                           s7c7gp05d,     # Persona D: número de días a la semana
+                                           s7c7gp05e,     # Persona E: número de días a la semana
+                                           s7c7gp06a,     # Persona A: número de meses
+                                           s7c7gp06b,     # Persona B: número de meses
+                                           s7c7gp06c,     # Persona C: número de meses
+                                           s7c7gp06d,     # Persona D: número de meses
+                                           s7c7gp06e,     # Persona E: número de meses
+                                           
+                                           s7c7gp07,      # Hubo mano de obra contratada por tipo de animal sí (1) no (2)
+                                           
+                                           s7c7gp08,      # num de hombres contratados
+                                           s7c7gp09,      # dinero en pesos pagado por hombre 
+                                           s7c7gp09_c,    # por semana (1), mes (2) o total (3)
+                                           s7c7gp10,      # num de meses
+                                           s7c7gp11,      # num de mujeres contratados
+                                           s7c7gp12,      # dinero en pesos pagado por mjer
+                                           s7c7gp12_c,    # por semana (1), mes (2) o total (3)
+                                           s7c7gp13,      # num de meses
+                                           
+                                           s7c7hp01,      # Código de grupo de animal
+                                           s7c7hp02,      # Acceso a PROGAN, si (1) no (2)
+                                           s7c7hp03,      # Cantidad recibida en pesos PROGAN    
+                                           s7c7hp06,      # Instalaciones para animales (P.ej. corrales,establos), si (1) no (2)
+                                           s7c7hp07,      # Gasto para mantenimiento de instalaciones, en pesos
+                                           s7c7hp08,      # lugar del gasto, en la loc. (1), otra loc. (2), USA (3), no sabe (888)
+                                           s7c7hp09_lc,   # Clave de la localidad
+                                           s7c7hp10_mc,   # Clave del municipio
+                                           s7c7hp11_edo   # Estado 
+                                           )
+                                  
+# Agregar columnas de individuos A, B, C, D, E
+
+
+#Guardar la tabla de factores de producción de la ganadería en la carpeta Bases_Hogares_Procesadas 
+guardarTablaProcesada(ganaderia_fact_prod)
+
+```
+(Ojo) Dotación del tiempo del hogar
+
+Pasos para calcular en número de hogras que le dedica el hogar a la ganadería
+1) Sacar una tabla de sólo mano de obra del hogar
+- Hay que filtrar la pregunta hubo miembros del hogar involucrados
+2) Hacer ancha la tabla de labor por la variable código horas/minutos
+3) Sumar horas A B C D E 
+4) Sumar minutos A B C D E (convertir a horas)
+5) Sumar la columna de horas y de minutos convertidos a horas
+
+Repetir el mismo procedimiento para número de días, semanas y mes.
+
+
+```{r}
+ganaderia_household_labor_A  <- prod_ganade_ta %>%
+                                    
+                                    filter(s7c7gp02 == 1) %>% # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
+  
+                                    select(cons,          # número de cuestionario
+                                           s7c7gp01,      # Grupo animal
+                                           s7c7gp04a,     # Persona A: número horas o minutos al día le trabajó
+                                           s7c7gp04_ca   # Persona A: código horas (1) o minutos (2)
+                                           ) %>%
+                                    spread(s7c7gp04_ca,s7c7gp04a)
+names(ganaderia_household_labor_A) <- c("cons","s7c7gp01","horas_A","minutos_A")
+ganaderia_household_labor_A <- mutate(ganaderia_household_labor_A, min_en_hrs_A = minutos_A/60)
+
+ganaderia_household_labor_B  <- prod_ganade_ta %>%
+                                    
+                                    filter(s7c7gp02 == 1) %>% # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
+  
+                                    select(cons,          # número de cuestionario
+                                           s7c7gp01,      # Grupo animal
+                                           s7c7gp04b,     # Persona A: número horas o minutos al día le trabajó
+                                           s7c7gp04_cb   # Persona A: código horas (1) o minutos (2)
+                                           ) %>%
+                                    spread(s7c7gp04_cb,s7c7gp04b)
+names(ganaderia_household_labor_B) <- c("cons","s7c7gp01","horas_B","minutos_B")
+ganaderia_household_labor_B <- mutate(ganaderia_household_labor_B, min_en_hrs_B = minutos_B/60)
+
+# na.rm = TRUE
+```
+
+
+
+**Productos_ganade**
+
+En esta tercera base se incluyen preguntas de los siguientes cuadros:
+Cuadro 7I. Productos de orígen animal
+Cuadro 7J. Almacenaje y empaque de productos de orígen animal
+
+```{r}
+prod_ganade <- procesarSTATA("Productos_ganade")
+names(prod_ganade)
+```
+```{r}
+ganaderia_productos  <- prod_ganade %>%
+                                    select (cons,          # Número de cuestionario
+                                           edo,            # Clave estado
+                                           mun,            # Clave de municipio
+                                           loc,            # Clave de localidad
+                                           animal,         # Tipo de animales en el hogar
+                                           s7c7ip01,       # Cantidad de animales en el hogar
+                                           s7c7ip_2,       # Código de producto
+                                           s7c7ip02,       # Los animales produjeron, si (1) no (2)
+                                           s7c7ip03,       # Número de meses que produjeron
+                                           s7c7ip04a,      # Promedio del número de unidades producidas al mes
+                                           s7c7ip04b,      # Unidades de producción (kilos,piezas,litros,etc.)
+                                           s7c7ip05a,      # Promedio de unidades utilizadas en autoconsumo
+                                           s7c7ip05b,      # Unidades de consumo (kilos,piezas,litros,etc.)
+                                           s7c7ip06a,      # Costo del producto en caso de haberlo comprado
+                                           s7c7ip06b,      # Unidades de consumo (kilos,piezas, litros,etc.)
+                                           s7c7ip07,       # Vendieron el producto, si (1) no (2)
+                                           s7c7ip08a,      # Promedio de unidades vendidas
+                                           s7c7ip08b,      # Unidades de producción (kilos,piezas,litros,etc.)
+                                           s7c7ip09a,      # Precio al que se vendió el producto
+                                           s7c7ip09b,      # Unidades de venta (kilos,piezas,litros,etc.)
+                                           s7c7ip10,       # Lugar de venta, dentro loc. (1), fuera loc. (2)
+                                           s7c7ip11,       # A quién se vendió el producto
+                                           s7c7ip12_lc,    # Código de la localidad donde se vendio
+                                           s7c7ip13_mc,    # Código del mpio. donde se vendio
+                                           s7c7ip14_edo,   # Estado donde se vendio
+                                           s7c7ip15,       # Costos de transporte, en pesos
+                                           s7c7ip15_c,     # Código, mes (1) total (2)
+                                           s7c7jp01,       # Código de producto
+                                           s7c7jp02,       # Se produjo algo en el hogar, si (1) no (2)
+                                           s7c7jp03,       # El producto fue almacenado, si (1) no (2)
+                                           s7c7jp04,       # Se pagó por almacenarlo, si (1) no (2)
+                                           s7c7jp05,       # Cantidad pagada por almacenar, en pesos
+                                           s7c7jp06,       # Dónde se almacenó el producto
+                                           s7c7jp07,       # Se echó a perder el producto, si (1) no (2)
+                                           s7c7jp08a,      # Unidades de producto perdidas
+                                           s7c7jp08b,      # Unidad de medida (kilos,piezas,litros,etc.)
+                                           s7c7jp08c,      # Cantidad de kilos en la medida
+                                           s7c7jp09,       # A qué precio pudo venderse el producto caducado
+                                           s7c7jp09_c,     # Unidad de medida (Kilos,piezas,litros,etc.)
+                                           s7c7jp10       # Costo de insumos para almacenaje o venta,en pesos
+                                            )
+
+#Guardar la tabla de productos derivados de la ganadería en la carpeta Bases_Hogares_Procesadas 
+guardarTablaProcesada(ganaderia_productos)
+
+```                                        
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
