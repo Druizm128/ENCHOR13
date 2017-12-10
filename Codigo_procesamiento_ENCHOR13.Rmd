@@ -131,18 +131,21 @@ Las siguientes funciones fueron definidas para simplificar tareas de procesamien
 ```{r}
 procesarSTATA <- function(nombreArchivo){
                     # Area de oportunidad. Ver como en windows se puede abreviar el working directory para no tener que escribir toda la ruta.
-                    tablaSTATA = read_dta(paste("C:/Users/dante.ruiz/Documents/MARCEG/ENCHOR013/Base de Hogares_DTA/",nombreArchivo,".dta", sep = ""))
-                    write.csv(tablaSTATA, file = paste("C:/Users/dante.ruiz/Documents/MARCEG/ENCHOR013/Bases_Hogares_CSV/",nombreArchivo,".csv", sep = ""))
+                    inputStataDirectory <- "Base de Hogares_DTA/"
+                    tablaSTATA = read_dta(paste(inputStataDirectory,nombreArchivo,".dta", sep = ""))
+                    outputCSVDirectory <- "Bases_Hogares_CSV/"
+                    write.csv(tablaSTATA, file = paste(outputCSVDirectory,nombreArchivo,".csv", sep = ""))
                     return(tablaSTATA)                    
-}
+                    }
 ```
 
 
 ```{r}
 guardarTablaProcesada <- function(tabla){
                                           nombreArchivo <- deparse(substitute(tabla))  
-                                          write.csv(tabla, file = paste("C:/Users/dante.ruiz/Documents/MARCEG/ENCHOR013/Bases_Hogares_Procesadas/",nombreArchivo,".csv", sep = ""))
-                                                  }
+                                          outputTablasProcesadas <- "Bases_Hogares_Procesadas/"
+                                          write.csv(tabla, file = paste(outputTablasProcesadas,nombreArchivo,".csv", sep = ""))
+                                          }
 ```
 
 
@@ -160,8 +163,11 @@ Se hicieron los siguientes catálogos para clasificar campos en la base de datos:
 * Catalogo_grupo_animal
 * Catalogo_animales
 ```{r}
-cat_gpo_animal <- read.csv("C:/Users/dante.ruiz/Documents/MARCEG/ENCHOR013/Catalogos/catalogo_grupo_animal.csv", colClasses = c("character","character"))
-cat_animal <- read.csv("C:/Users/dante.ruiz/Documents/MARCEG/ENCHOR013/Catalogos/catalogo_animales.csv", colClasses = c("character","character"))
+inputCatGpoAnimal <- "Catalogos/catalogo_grupo_animal.csv"
+cat_gpo_animal <- read.csv(inputCatGpoAnimal, colClasses = c("character","character"))
+
+inputCatAnimal <- "Catalogos/catalogo_animales.csv"
+cat_animal <- read.csv(inputCatAnimal, colClasses = c("character","character"))
 ```
 
 **Produccion_ganade_a**
