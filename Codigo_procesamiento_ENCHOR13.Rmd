@@ -115,6 +115,7 @@ Las siguientes librerías se utilizan para añadir funcionalidades especiales a la
 # install.packages("haven")
 # install.packages("dplyr")
 # install.packages("haven")
+# install.packages("tidyverse")
 
 # Cargar las librerías en el espacio de trabajo
 library(haven) # Librería para que R pueda leer bases de datos en STATA
@@ -311,6 +312,22 @@ Pasos para calcular en número de hogras que le dedica el hogar a la ganadería
 
 Repetir el mismo procedimiento para número de días, semanas y mes.
 
+** Cálculo de la mano de obra **
+
+Para el cálculo de la mano de obra en el sector ganadero se utiliza la tabla **Produccion_ganade_ta**, la cual distingue entre el trabajo realizado por miembros del hogar y el trabajo contratado.
+
+A continuación se describe cómo obtener el número de horas totales al año de los miembros del hogar. La información se encuentra agregada por hogar y tipo de animal.
+
+De la tabla **Produccion_ganade_ta** se construyen 4 tablas:
+
+* horas y minutos
+* código horas y minutos
+* número de días a la semana
+* número de meses en el año
+
+Cada una de estas tablas se manipula para que cada miembro del hogar A, B, C, D y E que se encuentra en formato de columnas se convierta en un renglón. Adicionalmente, se construye una llave de miembros del hogar extrayendo la letra clave de lo que antes era el nombre del campo. 
+
+
 
 ```{r}
 cleanKey <- function(key, start, end){
@@ -401,6 +418,8 @@ ganaderia_household_labor_code_months  <- prod_ganade_ta %>%
 
 ```
 
+Una vez que se cuentan con las 4 tablas estas se deben cruzar para formar una sola tabla llamada ** labor ** . El cruce se debe hacer en 4 etapas. Primero se hace un join entre las tablas horas y minutos que se llamará labor; después en la nueva tabla labor se hace un join con el código horas y minutos; después entre labor y días a la semana; y finalmente entre labor y el número de meses al año.
+
 ```{r}
 ganaderia_household_labor <- left_join(ganaderia_household_labor_time, ganaderia_household_labor_code_time, 
                                        by = c("cons"= "cons", "s7c7gp01" = "s7c7gp01", "member" = "member"))
@@ -423,6 +442,42 @@ ganaderia_household_labor <-  select(ganaderia_household_labor,
 
 ganaderia_household_labor
 ```
+
+Una vez hechos los joins en la tabla labor, ahora es posible calcular para cada miembro del hogar el número de horas que le dedican a cada grupo animal.
+
+```{r}
+calcularHora  <- function(tiempo, codigoTiempo){
+                                                ifelse(codigoTiempo == 1, tiempo, 
+                                                ifelse(codigoTiempo == 2, tiempo/60, 
+                                                ifelse(is.na(tiempo), 0, 
+                                                ifelse(is.nan(tiempo), 0, 0))))
+}
+
+ganaderia_household_labor <- mutate(ganaderia_household_labor, 
+                                    horasDia = calcularHora(num_hours_or_min, code_hours_or_min)) %>%
+  
+                             mutate(horasSemana = horasDia * days) %>%
+                             mutate(horasAno = horasSemana * months)
+
+guardarTablaProcesada(ganaderia_household_labor)
+
+```
+
+
+Finalmente, se agrega la información de la tabla por hogar y grupo animal.
+
+```{r}
+labor <- ganaderia_household_labor %>% 
+        
+         group_by(cons, s7c7gp01) %>% 
+  
+         summarise(horas_ano = sum(horasAno, na.rm = TRUE)) %>%
+  
+         arrange(cons, s7c7gp01)
+labor
+```
+
+
 
 **Productos_ganade**
 
@@ -483,12 +538,3 @@ guardarTablaProcesada(ganaderia_productos)
 
 ```                                        
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
