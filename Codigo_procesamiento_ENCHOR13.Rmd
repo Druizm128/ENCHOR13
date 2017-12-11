@@ -119,7 +119,8 @@ Las siguientes librerías se utilizan para añadir funcionalidades especiales a la
 # Cargar las librerías en el espacio de trabajo
 library(haven) # Librería para que R pueda leer bases de datos en STATA
 library(dplyr)   # Librería con un sintaxis especial para manipular tablas (data frames)
-library(tidyr)   # Librería con funciones para limpiar y estructurar tablas (data frames) 
+library(tidyr)   # Librería con funciones para limpiar y estructurar tablas (data frames)
+library(tidyverse)
 ```
 
 #### Funciones
@@ -290,13 +291,14 @@ ganaderia_fact_prod  <- prod_ganade_ta %>%
                                            s7c7hp11_edo   # Estado 
                                            )
                                   
-# Agregar columnas de individuos A, B, C, D, E
+#Reemplazar NaNs con blanco ""
 
 
 #Guardar la tabla de factores de producción de la ganadería en la carpeta Bases_Hogares_Procesadas 
 guardarTablaProcesada(ganaderia_fact_prod)
 
 ```
+
 (Ojo) Dotación del tiempo del hogar
 
 Pasos para calcular en número de hogras que le dedica el hogar a la ganadería
@@ -311,36 +313,116 @@ Repetir el mismo procedimiento para número de días, semanas y mes.
 
 
 ```{r}
-ganaderia_household_labor_A  <- prod_ganade_ta %>%
+cleanKey <- function(key, start, end){
+  substring(key,start,end)
+}
+
+# horas y minutos
+ganaderia_household_labor_time  <- prod_ganade_ta %>%
                                     
                                     filter(s7c7gp02 == 1) %>% # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
   
                                     select(cons,          # número de cuestionario
                                            s7c7gp01,      # Grupo animal
                                            s7c7gp04a,     # Persona A: número horas o minutos al día le trabajó
-                                           s7c7gp04_ca   # Persona A: código horas (1) o minutos (2)
+                                           s7c7gp04b,     # Persona B: número horas o minutos al día le trabajó
+                                           s7c7gp04c,     # Persona C: número horas o minutos al día le trabajó
+                                           s7c7gp04d,     # Persona D: número horas o minutos al día le trabajó
+                                           s7c7gp04e     # Persona E: número horas o minutos al día le trabajó
                                            ) %>%
-                                    spread(s7c7gp04_ca,s7c7gp04a)
-names(ganaderia_household_labor_A) <- c("cons","s7c7gp01","horas_A","minutos_A")
-ganaderia_household_labor_A <- mutate(ganaderia_household_labor_A, min_en_hrs_A = minutos_A/60)
-
-ganaderia_household_labor_B  <- prod_ganade_ta %>%
+  
+                                    arrange(cons, s7c7gp01) %>%
+  
+                                    gather(3:7, key = "householdMember", value = "num_hours_or_min") %>%
+                                    
+                                    mutate(member = cleanKey(householdMember,9,9)) 
+                                    
+# codigo horas y minutos
+ganaderia_household_labor_code_time  <- prod_ganade_ta %>%
                                     
                                     filter(s7c7gp02 == 1) %>% # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
   
                                     select(cons,          # número de cuestionario
                                            s7c7gp01,      # Grupo animal
-                                           s7c7gp04b,     # Persona A: número horas o minutos al día le trabajó
-                                           s7c7gp04_cb   # Persona A: código horas (1) o minutos (2)
+                                           s7c7gp04_ca,   # Persona A: código horas (1) o minutos (2)
+                                           s7c7gp04_cb,   # Persona B: código horas (1) o minutos (2)
+                                           s7c7gp04_cc,   # Persona C: código horas (1) o minutos (2)
+                                           s7c7gp04_cd,   # Persona D: código horas (1) o minutos (2)
+                                           s7c7gp04_ce   # Persona E: código horas (1) o minutos (2)
                                            ) %>%
-                                    spread(s7c7gp04_cb,s7c7gp04b)
-names(ganaderia_household_labor_B) <- c("cons","s7c7gp01","horas_B","minutos_B")
-ganaderia_household_labor_B <- mutate(ganaderia_household_labor_B, min_en_hrs_B = minutos_B/60)
+  
+                                    arrange(cons, s7c7gp01) %>%
+  
+                                    gather(3:7, key = "householdMember", value = "code_hours_or_min") %>%
+  
+                                    mutate(member = cleanKey(householdMember,11,11))
+  
 
-# na.rm = TRUE
+
+# número de días a la semana
+ganaderia_household_labor_code_days  <- prod_ganade_ta %>%
+                                    
+                                    filter(s7c7gp02 == 1) %>% # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
+  
+                                    select(cons,          # número de cuestionario
+                                           s7c7gp01,      # Grupo animal
+                                           s7c7gp05a,     # Persona A: número de días a la semana
+                                           s7c7gp05b,     # Persona B: número de días a la semana
+                                           s7c7gp05c,     # Persona C: número de días a la semana
+                                           s7c7gp05d,     # Persona D: número de días a la semana
+                                           s7c7gp05e     # Persona E: número de días a la semana
+                                           ) %>%
+  
+                                    arrange(cons, s7c7gp01) %>%
+  
+                                    gather(3:7, key = "householdMember", value = "days") %>%
+  
+                                    mutate(member = cleanKey(householdMember,9,9))
+  
+# número de días al mes
+ganaderia_household_labor_code_months  <- prod_ganade_ta %>%
+                                    
+                                    filter(s7c7gp02 == 1) %>% # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
+  
+                                    select(cons,          # número de cuestionario
+                                           s7c7gp01,      # Grupo animal
+                                           s7c7gp06a,     # Persona A: número de meses
+                                           s7c7gp06b,     # Persona B: número de meses
+                                           s7c7gp06c,     # Persona C: número de meses
+                                           s7c7gp06d,     # Persona D: número de meses
+                                           s7c7gp06e      # Persona E: número de meses
+                                           ) %>%
+  
+                                    arrange(cons, s7c7gp01) %>%
+  
+                                    gather(3:7, key = "householdMember", value = "months") %>%
+  
+                                    mutate(member = cleanKey(householdMember,9,9))
+
 ```
 
+```{r}
+ganaderia_household_labor <- left_join(ganaderia_household_labor_time, ganaderia_household_labor_code_time, 
+                                       by = c("cons"= "cons", "s7c7gp01" = "s7c7gp01", "member" = "member"))
 
+ganaderia_household_labor <- left_join(ganaderia_household_labor, ganaderia_household_labor_code_days, 
+                                       by = c("cons"= "cons", "s7c7gp01" = "s7c7gp01", "member" = "member"))
+
+ganaderia_household_labor <- left_join(ganaderia_household_labor, ganaderia_household_labor_code_months, 
+                                       by = c("cons"= "cons", "s7c7gp01" = "s7c7gp01", "member" = "member"))
+
+ganaderia_household_labor <-  select(ganaderia_household_labor, 
+                                     cons, 
+                                     s7c7gp01, 
+                                     member, 
+                                     num_hours_or_min, 
+                                     code_hours_or_min, 
+                                     days, 
+                                     months) %>%
+                             arrange(cons, s7c7gp01, member)
+
+ganaderia_household_labor
+```
 
 **Productos_ganade**
 
