@@ -136,7 +136,7 @@ procesarSTATA <- function(nombreArchivo, ...){
                     inputStataDirectory <- "Base de Hogares_DTA/"
                     tablaSTATA = read_dta(paste(inputStataDirectory,nombreArchivo,".dta", sep = "", ...))
                     outputCSVDirectory <- "Bases_Hogares_CSV/"
-                    write.csv(tablaSTATA, file = paste(outputCSVDirectory,nombreArchivo,".csv", sep = ""))
+                    write.csv(tablaSTATA, file = paste(outputCSVDirectory,nombreArchivo,".csv", sep = ""), row.names=FALSE)
                     return(tablaSTATA)                    
                     }
 ```
@@ -146,7 +146,7 @@ procesarSTATA <- function(nombreArchivo, ...){
 guardarTablaProcesada <- function(tabla){
                                           nombreArchivo <- deparse(substitute(tabla))  
                                           outputTablasProcesadas <- "Bases_Hogares_Procesadas/"
-                                          write.csv(tabla, file = paste(outputTablasProcesadas,nombreArchivo,".csv", sep = ""))
+                                          write.csv(tabla, file = paste(outputTablasProcesadas,nombreArchivo,".csv", sep = ""), row.names=FALSE)
                                           }
 ```
 
@@ -175,6 +175,17 @@ inputCatAnimal <- "Catalogos/catalogo_animales.csv"
 cat_animal <- read_csv(inputCatAnimal, col_types = cols( COD_ANIMAL = col_character(),
                                                          NOMBRE_ANIMAL = col_character()
                                                         ))
+
+inputCatEstado <- "Catalogos/catalogo_estado.csv"
+cat_estado <- read.csv(inputCatEstado) %>% 
+              mutate(CVE_ENT = sprintf("%02d", CVE_ENT))
+
+
+inputCatMunicipio <- "Catalogos/catalogo_municipio.csv"
+cat_municipio <- read.csv(inputCatMunicipio) %>% 
+              mutate(CVE_ENT = sprintf("%02d", CVE_ENT)) %>%
+              mutate(CVE_MUN = sprintf("%03d", CVE_MUN))
+
 ```
 
 **Produccion_ganade_a**
@@ -332,6 +343,8 @@ De la tabla **Produccion_ganade_ta** se construyen 4 tablas:
 
 Cada una de estas tablas se manipula para que cada miembro del hogar A, B, C, D y E que se encuentra en formato de columnas se convierta en un renglón. Adicionalmente, se construye una llave de miembros del hogar extrayendo la letra clave de lo que antes era el nombre del campo. 
 
+
+
 ```{r}
 cleanKey <- function(key, start, end){
   substring(key,start,end)
@@ -342,7 +355,11 @@ ganaderia_household_labor_time  <- prod_ganade_ta %>%
                                     
                                     filter(s7c7gp02 == 1) %>% # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
   
-                                    select(cons,          # número de cuestionario
+                                    select(
+                                           cons,          # número de cuestionario
+                                           edo,           # clave estado
+                                           mun,           # clave municipio
+                                           loc,           # clave localidad                                            
                                            s7c7gp01,      # Grupo animal
                                            s7c7gp04a,     # Persona A: número horas o minutos al día le trabajó
                                            s7c7gp04b,     # Persona B: número horas o minutos al día le trabajó
@@ -353,18 +370,22 @@ ganaderia_household_labor_time  <- prod_ganade_ta %>%
   
                                     arrange(cons, s7c7gp01) %>%
   
-                                    gather(3:7, key = "householdMember", value = "num_hours_or_min") %>%
+                                    gather(6:10, key = "householdMember", value = "num_hours_or_min") %>%
                                     
                                     mutate(member = cleanKey(householdMember,9,9)) %>%
   
-                                    mutate_at(vars("cons","s7c7gp01", "householdMember","member"), funs(as.character))
+                                    mutate_at(vars("cons","edo","mun","loc","s7c7gp01", "householdMember","member"), funs(as.character))
 
 # codigo horas y minutos
 ganaderia_household_labor_code_time  <- prod_ganade_ta %>%
                                     
                                     filter(s7c7gp02 == 1) %>% # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
   
-                                    select(cons,          # número de cuestionario
+                                    select(
+                                           cons,          # número de cuestionario     
+                                           edo,           # clave estado
+                                           mun,           # clave municipio
+                                           loc,           # clave localidad      
                                            s7c7gp01,      # Grupo animal
                                            s7c7gp04_ca,   # Persona A: código horas (1) o minutos (2)
                                            s7c7gp04_cb,   # Persona B: código horas (1) o minutos (2)
@@ -375,7 +396,7 @@ ganaderia_household_labor_code_time  <- prod_ganade_ta %>%
   
                                     arrange(cons, s7c7gp01) %>%
   
-                                    gather(3:7, key = "householdMember", value = "code_hours_or_min") %>%
+                                    gather(6:10, key = "householdMember", value = "code_hours_or_min") %>%
   
                                     mutate(member = cleanKey(householdMember,11,11))  %>%
   
@@ -386,7 +407,11 @@ ganaderia_household_labor_code_days  <- prod_ganade_ta %>%
                                     
                                     filter(s7c7gp02 == 1) %>% # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
   
-                                    select(cons,          # número de cuestionario
+                                    select(
+                                           cons,          # número de cuestionario
+                                           edo,           # clave estado
+                                           mun,           # clave municipio
+                                           loc,           # clave localidad      
                                            s7c7gp01,      # Grupo animal
                                            s7c7gp05a,     # Persona A: número de días a la semana
                                            s7c7gp05b,     # Persona B: número de días a la semana
@@ -397,18 +422,22 @@ ganaderia_household_labor_code_days  <- prod_ganade_ta %>%
   
                                     arrange(cons, s7c7gp01) %>%
   
-                                    gather(3:7, key = "householdMember", value = "days") %>%
+                                    gather(6:10, key = "householdMember", value = "days") %>%
   
                                     mutate(member = cleanKey(householdMember,9,9)) %>%
   
-                                    mutate_at(vars("cons", "s7c7gp01", "householdMember", "member"),funs(as.character))
+                                    mutate_at(vars("cons","edo","mun","loc","s7c7gp01", "householdMember", "member"),funs(as.character))
 
 # número de días al mes
 ganaderia_household_labor_code_months  <- prod_ganade_ta %>%
                                     
                                     filter(s7c7gp02 == 1) %>% # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
   
-                                    select(cons,          # número de cuestionario
+                                    select(
+                                           cons,          # número de cuestionario     
+                                           edo,           # clave estado
+                                           mun,           # clave municipio
+                                           loc,           # clave localidad      
                                            s7c7gp01,      # Grupo animal
                                            s7c7gp06a,     # Persona A: número de meses
                                            s7c7gp06b,     # Persona B: número de meses
@@ -419,11 +448,11 @@ ganaderia_household_labor_code_months  <- prod_ganade_ta %>%
   
                                     arrange(cons, s7c7gp01) %>%
   
-                                    gather(3:7, key = "householdMember", value = "months") %>%
+                                    gather(6:10, key = "householdMember", value = "months") %>%
   
                                     mutate(member = cleanKey(householdMember,9,9)) %>%
   
-                                    mutate_at(vars("cons", "s7c7gp01", "householdMember", "member"),funs(as.character))
+                                    mutate_at(vars("cons","edo","mun","loc", "s7c7gp01", "householdMember", "member"),funs(as.character))
 ```
 Una vez que se cuentan con las 4 tablas estas se deben cruzar para formar una sola tabla llamada ** labor ** . El cruce se debe hacer en 4 etapas. Primero se hace un join entre las tablas horas y minutos que se llamará labor; después en la nueva tabla labor se hace un join con el código horas y minutos; después entre labor y días a la semana; y finalmente entre labor y el número de meses al año.
 
@@ -439,11 +468,14 @@ ganaderia_household_labor <- left_join(ganaderia_household_labor, ganaderia_hous
 
 ganaderia_household_labor <- left_join(ganaderia_household_labor, cat_gpo_animal, by = c("s7c7gp01" ="COD_GPO"))
 
-sapply(ganaderia_household_labor, class)
+cbind(sapply(ganaderia_household_labor, class))
 ```
 ```{r}
 ganaderia_household_labor <-  select(ganaderia_household_labor, 
                                      cons, 
+                                     edo.x,           # clave estado
+                                     mun.x,           # clave municipio
+                                     loc.x,           # clave localidad      
                                      s7c7gp01,
                                      NOMBRE_GRUPO,
                                      member, 
@@ -452,8 +484,7 @@ ganaderia_household_labor <-  select(ganaderia_household_labor,
                                      days, 
                                      months) %>%
                              arrange(cons, s7c7gp01, member)
-
-ganaderia_household_labor
+head(ganaderia_household_labor)                    
 ```
 
 Una vez hechos los joins en la tabla labor, ahora es posible calcular para cada miembro del hogar el número de horas que le dedican a cada grupo animal.
@@ -470,10 +501,23 @@ ganaderia_household_labor <- mutate(ganaderia_household_labor,
                                     horasDia = calcularHora(num_hours_or_min, code_hours_or_min)) %>%
                              mutate(horasSemana = horasDia * days) %>%
                              mutate(horasMes = horasSemana * 4) %>%
-                             mutate(horasAno = horasMes * months)
+                             mutate(horasAno = horasMes * months) %>%
+                             mutate(cons = sprintf("%04d", as.numeric(cons))) %>%
+                             mutate(edo.x = sprintf("%02d", as.numeric(edo.x))) %>%
+                             mutate(mun.x = sprintf("%03d", as.numeric(mun.x))) %>%
+                             mutate(loc.x = sprintf("%04d", as.numeric(loc.x))) %>%
+                             rename(cve_edo = edo.x,
+                                    cve_mun = mun.x,
+                                    cve_loc = loc.x,
+                                    grupo_animal = NOMBRE_GRUPO,
+                                    miembro_hogar = member
+                                    )
 
+ganaderia_household_labor <- left_join(ganaderia_household_labor,cat_estado, by = c("cve_edo" = "CVE_ENT"))
+ganaderia_household_labor <- left_join(ganaderia_household_labor, cat_municipio, by = c("cve_edo" = "CVE_ENT", "cve_mun" = "CVE_MUN"))
+                            
 guardarTablaProcesada(ganaderia_household_labor)
-
+head(ganaderia_household_labor)
 ```
 
 
@@ -481,22 +525,23 @@ Finalmente, se agrega la información de la tabla por hogar y grupo animal.
 
 ```{r}
 labor <- ganaderia_household_labor %>%
+         
+         group_by(cons, cve_edo, NOM_ENT, cve_mun, NOM_MUN, cve_loc, grupo_animal) %>% 
   
-         group_by(s7c7gp01, NOMBRE_GRUPO) %>% 
+         summarise(horas_anuales = sum(horasAno, na.rm = TRUE)) %>%
   
-         summarise(horas_ano = sum(horasAno, na.rm = TRUE)) %>%
-  
-         arrange(NOMBRE_GRUPO, s7c7gp01)
+         arrange(grupo_animal)
 
 guardarTablaProcesada(labor)
-
+nrow(labor)
+head(labor)
 
 ```
 
 Tabla resumen:
 
 ```{r}
-labor %>% group_by(NOMBRE_GRUPO) %>% summarise(HORAS_ANUALES = sum(horas_ano)) %>% arrange(desc(HORAS_ANUALES))
+labor %>% group_by(grupo_animal) %>% summarise(horas_anuales = sum(horas_anuales)) %>% arrange(desc(horas_anuales))
 ```
 
 
