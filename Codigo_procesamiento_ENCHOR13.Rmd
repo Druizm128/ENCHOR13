@@ -131,10 +131,10 @@ Las siguientes funciones fueron definidas para simplificar tareas de procesamien
 * __procesaSTATA( "nombreArchivo" )__. Es una función  que de la carpeta Base de Hogares_DTA lee en R un archivo en formato STATA, lo carga en el espacio de trabajo, y dentro de la carpeta Bases_Hogares_CSV lo guarda en un archivo CSV para poder abrirlo en EXCEL. La función recibe un argumento en formato string, es decir entre " " con el nombre del archvio. Es preciso mencionar que no se tiene que indicar la extensión del archivo dta.
 
 ```{r}
-procesarSTATA <- function(nombreArchivo){
+procesarSTATA <- function(nombreArchivo, ...){
                     # Area de oportunidad. Ver como en windows se puede abreviar el working directory para no tener que escribir toda la ruta.
                     inputStataDirectory <- "Base de Hogares_DTA/"
-                    tablaSTATA = read_dta(paste(inputStataDirectory,nombreArchivo,".dta", sep = ""))
+                    tablaSTATA = read_dta(paste(inputStataDirectory,nombreArchivo,".dta", sep = "", ...))
                     outputCSVDirectory <- "Bases_Hogares_CSV/"
                     write.csv(tablaSTATA, file = paste(outputCSVDirectory,nombreArchivo,".csv", sep = ""))
                     return(tablaSTATA)                    
@@ -166,10 +166,15 @@ Se hicieron los siguientes catálogos para clasificar campos en la base de datos:
 * Catalogo_animales
 ```{r}
 inputCatGpoAnimal <- "Catalogos/catalogo_grupo_animal.csv"
-cat_gpo_animal <- read.csv(inputCatGpoAnimal, colClasses = c("character","character"))
+cat_gpo_animal <- read_csv(inputCatGpoAnimal, 
+                           col_types = cols( COD_GPO = col_character(),
+                                             NOMBRE_GRUPO = col_character()
+                                            ))
 
 inputCatAnimal <- "Catalogos/catalogo_animales.csv"
-cat_animal <- read.csv(inputCatAnimal, colClasses = c("character","character"))
+cat_animal <- read_csv(inputCatAnimal, col_types = cols( COD_ANIMAL = col_character(),
+                                                         NOMBRE_ANIMAL = col_character()
+                                                        ))
 ```
 
 **Produccion_ganade_a**
@@ -312,7 +317,7 @@ Pasos para calcular en número de hogras que le dedica el hogar a la ganadería
 
 Repetir el mismo procedimiento para número de días, semanas y mes.
 
-** Cálculo de la mano de obra **
+**Cálculo de la mano de obra**
 
 Para el cálculo de la mano de obra en el sector ganadero se utiliza la tabla **Produccion_ganade_ta**, la cual distingue entre el trabajo realizado por miembros del hogar y el trabajo contratado.
 
@@ -326,8 +331,6 @@ De la tabla **Produccion_ganade_ta** se construyen 4 tablas:
 * número de meses en el año
 
 Cada una de estas tablas se manipula para que cada miembro del hogar A, B, C, D y E que se encuentra en formato de columnas se convierta en un renglón. Adicionalmente, se construye una llave de miembros del hogar extrayendo la letra clave de lo que antes era el nombre del campo. 
-
-
 
 ```{r}
 cleanKey <- function(key, start, end){
@@ -345,15 +348,17 @@ ganaderia_household_labor_time  <- prod_ganade_ta %>%
                                            s7c7gp04b,     # Persona B: número horas o minutos al día le trabajó
                                            s7c7gp04c,     # Persona C: número horas o minutos al día le trabajó
                                            s7c7gp04d,     # Persona D: número horas o minutos al día le trabajó
-                                           s7c7gp04e     # Persona E: número horas o minutos al día le trabajó
+                                           s7c7gp04e      # Persona E: número horas o minutos al día le trabajó
                                            ) %>%
   
                                     arrange(cons, s7c7gp01) %>%
   
                                     gather(3:7, key = "householdMember", value = "num_hours_or_min") %>%
                                     
-                                    mutate(member = cleanKey(householdMember,9,9)) 
-                                    
+                                    mutate(member = cleanKey(householdMember,9,9)) %>%
+  
+                                    mutate_at(vars("cons","s7c7gp01", "householdMember","member"), funs(as.character))
+
 # codigo horas y minutos
 ganaderia_household_labor_code_time  <- prod_ganade_ta %>%
                                     
@@ -372,9 +377,9 @@ ganaderia_household_labor_code_time  <- prod_ganade_ta %>%
   
                                     gather(3:7, key = "householdMember", value = "code_hours_or_min") %>%
   
-                                    mutate(member = cleanKey(householdMember,11,11))
+                                    mutate(member = cleanKey(householdMember,11,11))  %>%
   
-
+                                    mutate_all(funs(as.character))
 
 # número de días a la semana
 ganaderia_household_labor_code_days  <- prod_ganade_ta %>%
@@ -394,8 +399,10 @@ ganaderia_household_labor_code_days  <- prod_ganade_ta %>%
   
                                     gather(3:7, key = "householdMember", value = "days") %>%
   
-                                    mutate(member = cleanKey(householdMember,9,9))
+                                    mutate(member = cleanKey(householdMember,9,9)) %>%
   
+                                    mutate_at(vars("cons", "s7c7gp01", "householdMember", "member"),funs(as.character))
+
 # número de días al mes
 ganaderia_household_labor_code_months  <- prod_ganade_ta %>%
                                     
@@ -414,10 +421,10 @@ ganaderia_household_labor_code_months  <- prod_ganade_ta %>%
   
                                     gather(3:7, key = "householdMember", value = "months") %>%
   
-                                    mutate(member = cleanKey(householdMember,9,9))
-
+                                    mutate(member = cleanKey(householdMember,9,9)) %>%
+  
+                                    mutate_at(vars("cons", "s7c7gp01", "householdMember", "member"),funs(as.character))
 ```
-
 Una vez que se cuentan con las 4 tablas estas se deben cruzar para formar una sola tabla llamada ** labor ** . El cruce se debe hacer en 4 etapas. Primero se hace un join entre las tablas horas y minutos que se llamará labor; después en la nueva tabla labor se hace un join con el código horas y minutos; después entre labor y días a la semana; y finalmente entre labor y el número de meses al año.
 
 ```{r}
@@ -430,9 +437,15 @@ ganaderia_household_labor <- left_join(ganaderia_household_labor, ganaderia_hous
 ganaderia_household_labor <- left_join(ganaderia_household_labor, ganaderia_household_labor_code_months, 
                                        by = c("cons"= "cons", "s7c7gp01" = "s7c7gp01", "member" = "member"))
 
+ganaderia_household_labor <- left_join(ganaderia_household_labor, cat_gpo_animal, by = c("s7c7gp01" ="COD_GPO"))
+
+sapply(ganaderia_household_labor, class)
+```
+```{r}
 ganaderia_household_labor <-  select(ganaderia_household_labor, 
                                      cons, 
-                                     s7c7gp01, 
+                                     s7c7gp01,
+                                     NOMBRE_GRUPO,
                                      member, 
                                      num_hours_or_min, 
                                      code_hours_or_min, 
@@ -455,9 +468,9 @@ calcularHora  <- function(tiempo, codigoTiempo){
 
 ganaderia_household_labor <- mutate(ganaderia_household_labor, 
                                     horasDia = calcularHora(num_hours_or_min, code_hours_or_min)) %>%
-  
                              mutate(horasSemana = horasDia * days) %>%
-                             mutate(horasAno = horasSemana * months)
+                             mutate(horasMes = horasSemana * 4) %>%
+                             mutate(horasAno = horasMes * months)
 
 guardarTablaProcesada(ganaderia_household_labor)
 
@@ -467,14 +480,23 @@ guardarTablaProcesada(ganaderia_household_labor)
 Finalmente, se agrega la información de la tabla por hogar y grupo animal.
 
 ```{r}
-labor <- ganaderia_household_labor %>% 
-        
-         group_by(cons, s7c7gp01) %>% 
+labor <- ganaderia_household_labor %>%
+  
+         group_by(s7c7gp01, NOMBRE_GRUPO) %>% 
   
          summarise(horas_ano = sum(horasAno, na.rm = TRUE)) %>%
   
-         arrange(cons, s7c7gp01)
-labor
+         arrange(NOMBRE_GRUPO, s7c7gp01)
+
+guardarTablaProcesada(labor)
+
+
+```
+
+Tabla resumen:
+
+```{r}
+labor %>% group_by(NOMBRE_GRUPO) %>% summarise(HORAS_ANUALES = sum(horas_ano)) %>% arrange(desc(HORAS_ANUALES))
 ```
 
 

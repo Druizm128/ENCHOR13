@@ -247,10 +247,10 @@ library(tidyverse)</code></pre>
 <ul>
 <li><strong>procesaSTATA( “nombreArchivo” )</strong>. Es una función que de la carpeta Base de Hogares_DTA lee en R un archivo en formato STATA, lo carga en el espacio de trabajo, y dentro de la carpeta Bases_Hogares_CSV lo guarda en un archivo CSV para poder abrirlo en EXCEL. La función recibe un argumento en formato string, es decir entre &quot; &quot; con el nombre del archvio. Es preciso mencionar que no se tiene que indicar la extensión del archivo dta.</li>
 </ul>
-<pre class="r"><code>procesarSTATA &lt;- function(nombreArchivo){
+<pre class="r"><code>procesarSTATA &lt;- function(nombreArchivo, ...){
                     # Area de oportunidad. Ver como en windows se puede abreviar el working directory para no tener que escribir toda la ruta.
                     inputStataDirectory &lt;- &quot;Base de Hogares_DTA/&quot;
-                    tablaSTATA = read_dta(paste(inputStataDirectory,nombreArchivo,&quot;.dta&quot;, sep = &quot;&quot;))
+                    tablaSTATA = read_dta(paste(inputStataDirectory,nombreArchivo,&quot;.dta&quot;, sep = &quot;&quot;, ...))
                     outputCSVDirectory &lt;- &quot;Bases_Hogares_CSV/&quot;
                     write.csv(tablaSTATA, file = paste(outputCSVDirectory,nombreArchivo,&quot;.csv&quot;, sep = &quot;&quot;))
                     return(tablaSTATA)                    
@@ -275,10 +275,15 @@ library(tidyverse)</code></pre>
 <li>Catalogo_animales</li>
 </ul>
 <pre class="r"><code>inputCatGpoAnimal &lt;- &quot;Catalogos/catalogo_grupo_animal.csv&quot;
-cat_gpo_animal &lt;- read.csv(inputCatGpoAnimal, colClasses = c(&quot;character&quot;,&quot;character&quot;))
+cat_gpo_animal &lt;- read_csv(inputCatGpoAnimal, 
+                           col_types = cols( COD_GPO = col_character(),
+                                             NOMBRE_GRUPO = col_character()
+                                            ))
 
 inputCatAnimal &lt;- &quot;Catalogos/catalogo_animales.csv&quot;
-cat_animal &lt;- read.csv(inputCatAnimal, colClasses = c(&quot;character&quot;,&quot;character&quot;))</code></pre>
+cat_animal &lt;- read_csv(inputCatAnimal, col_types = cols( COD_ANIMAL = col_character(),
+                                                         NOMBRE_ANIMAL = col_character()
+                                                        ))</code></pre>
 <p><strong>Produccion_ganade_a</strong></p>
 <p>Esta primera base de datos incluye las preguntas de los cuadros siguientes: * Cuadro 7A. Tipo de Animal * Cuadro 7B. Contabilidad * Cuadro 7C. Compras * Cuadro 7D. Ventas</p>
 <pre class="r"><code>prod_ganade_a &lt;- procesarSTATA(&quot;Produccion_ganade_a&quot;)
@@ -425,7 +430,7 @@ guardarTablaProcesada(ganaderia_fact_prod)</code></pre>
 <p>(Ojo) Dotación del tiempo del hogar</p>
 <p>Pasos para calcular en número de hogras que le dedica el hogar a la ganadería 1) Sacar una tabla de sólo mano de obra del hogar - Hay que filtrar la pregunta hubo miembros del hogar involucrados 2) Hacer ancha la tabla de labor por la variable código horas/minutos 3) Sumar horas A B C D E 4) Sumar minutos A B C D E (convertir a horas) 5) Sumar la columna de horas y de minutos convertidos a horas</p>
 <p>Repetir el mismo procedimiento para número de días, semanas y mes.</p>
-<p>** Cálculo de la mano de obra **</p>
+<p><strong>Cálculo de la mano de obra</strong></p>
 <p>Para el cálculo de la mano de obra en el sector ganadero se utiliza la tabla <strong>Produccion_ganade_ta</strong>, la cual distingue entre el trabajo realizado por miembros del hogar y el trabajo contratado.</p>
 <p>A continuación se describe cómo obtener el número de horas totales al año de los miembros del hogar. La información se encuentra agregada por hogar y tipo de animal.</p>
 <p>De la tabla <strong>Produccion_ganade_ta</strong> se construyen 4 tablas:</p>
@@ -451,14 +456,16 @@ ganaderia_household_labor_time  &lt;- prod_ganade_ta %&gt;%
                                            s7c7gp04b,     # Persona B: número horas o minutos al día le trabajó
                                            s7c7gp04c,     # Persona C: número horas o minutos al día le trabajó
                                            s7c7gp04d,     # Persona D: número horas o minutos al día le trabajó
-                                           s7c7gp04e     # Persona E: número horas o minutos al día le trabajó
+                                           s7c7gp04e      # Persona E: número horas o minutos al día le trabajó
                                            ) %&gt;%
   
                                     arrange(cons, s7c7gp01) %&gt;%
   
                                     gather(3:7, key = &quot;householdMember&quot;, value = &quot;num_hours_or_min&quot;) %&gt;%
                                     
-                                    mutate(member = cleanKey(householdMember,9,9)) </code></pre>
+                                    mutate(member = cleanKey(householdMember,9,9)) %&gt;%
+  
+                                    mutate_at(vars(&quot;cons&quot;,&quot;s7c7gp01&quot;, &quot;householdMember&quot;,&quot;member&quot;), funs(as.character))</code></pre>
 <pre><code>## Warning: attributes are not identical across measure variables;
 ## they will be dropped</code></pre>
 <pre class="r"><code># codigo horas y minutos
@@ -479,7 +486,9 @@ ganaderia_household_labor_code_time  &lt;- prod_ganade_ta %&gt;%
   
                                     gather(3:7, key = &quot;householdMember&quot;, value = &quot;code_hours_or_min&quot;) %&gt;%
   
-                                    mutate(member = cleanKey(householdMember,11,11))</code></pre>
+                                    mutate(member = cleanKey(householdMember,11,11))  %&gt;%
+  
+                                    mutate_all(funs(as.character))</code></pre>
 <pre><code>## Warning: attributes are not identical across measure variables;
 ## they will be dropped</code></pre>
 <pre class="r"><code># número de días a la semana
@@ -500,7 +509,9 @@ ganaderia_household_labor_code_days  &lt;- prod_ganade_ta %&gt;%
   
                                     gather(3:7, key = &quot;householdMember&quot;, value = &quot;days&quot;) %&gt;%
   
-                                    mutate(member = cleanKey(householdMember,9,9))</code></pre>
+                                    mutate(member = cleanKey(householdMember,9,9)) %&gt;%
+  
+                                    mutate_at(vars(&quot;cons&quot;, &quot;s7c7gp01&quot;, &quot;householdMember&quot;, &quot;member&quot;),funs(as.character))</code></pre>
 <pre><code>## Warning: attributes are not identical across measure variables;
 ## they will be dropped</code></pre>
 <pre class="r"><code># número de días al mes
@@ -521,7 +532,9 @@ ganaderia_household_labor_code_months  &lt;- prod_ganade_ta %&gt;%
   
                                     gather(3:7, key = &quot;householdMember&quot;, value = &quot;months&quot;) %&gt;%
   
-                                    mutate(member = cleanKey(householdMember,9,9))</code></pre>
+                                    mutate(member = cleanKey(householdMember,9,9)) %&gt;%
+  
+                                    mutate_at(vars(&quot;cons&quot;, &quot;s7c7gp01&quot;, &quot;householdMember&quot;, &quot;member&quot;),funs(as.character))</code></pre>
 <pre><code>## Warning: attributes are not identical across measure variables;
 ## they will be dropped</code></pre>
 <p>Una vez que se cuentan con las 4 tablas estas se deben cruzar para formar una sola tabla llamada ** labor ** . El cruce se debe hacer en 4 etapas. Primero se hace un join entre las tablas horas y minutos que se llamará labor; después en la nueva tabla labor se hace un join con el código horas y minutos; después entre labor y días a la semana; y finalmente entre labor y el número de meses al año.</p>
@@ -534,9 +547,21 @@ ganaderia_household_labor &lt;- left_join(ganaderia_household_labor, ganaderia_h
 ganaderia_household_labor &lt;- left_join(ganaderia_household_labor, ganaderia_household_labor_code_months, 
                                        by = c(&quot;cons&quot;= &quot;cons&quot;, &quot;s7c7gp01&quot; = &quot;s7c7gp01&quot;, &quot;member&quot; = &quot;member&quot;))
 
-ganaderia_household_labor &lt;-  select(ganaderia_household_labor, 
+ganaderia_household_labor &lt;- left_join(ganaderia_household_labor, cat_gpo_animal, by = c(&quot;s7c7gp01&quot; =&quot;COD_GPO&quot;))
+
+sapply(ganaderia_household_labor, class)</code></pre>
+<pre><code>##                cons            s7c7gp01   householdMember.x 
+##         &quot;character&quot;         &quot;character&quot;         &quot;character&quot; 
+##    num_hours_or_min              member   householdMember.y 
+##           &quot;numeric&quot;         &quot;character&quot;         &quot;character&quot; 
+##   code_hours_or_min householdMember.x.x                days 
+##         &quot;character&quot;         &quot;character&quot;           &quot;numeric&quot; 
+## householdMember.y.y              months        NOMBRE_GRUPO 
+##         &quot;character&quot;           &quot;numeric&quot;         &quot;character&quot;</code></pre>
+<pre class="r"><code>ganaderia_household_labor &lt;-  select(ganaderia_household_labor, 
                                      cons, 
-                                     s7c7gp01, 
+                                     s7c7gp01,
+                                     NOMBRE_GRUPO,
                                      member, 
                                      num_hours_or_min, 
                                      code_hours_or_min, 
@@ -545,20 +570,20 @@ ganaderia_household_labor &lt;-  select(ganaderia_household_labor,
                              arrange(cons, s7c7gp01, member)
 
 ganaderia_household_labor</code></pre>
-<pre><code>## # A tibble: 8,920 x 7
-##     cons  s7c7gp01 member num_hours_or_min code_hours_or_min  days months
-##    &lt;dbl&gt; &lt;dbl+lbl&gt;  &lt;chr&gt;            &lt;dbl&gt;             &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;
-##  1     1         4      a                1                 1     7     12
-##  2     1         4      b                1                 1     7     12
-##  3     1         4      c                1                 1     7     12
-##  4     1         4      d               NA                NA    NA     NA
-##  5     1         4      e               NA                NA    NA     NA
-##  6     8         3      a                2                 1     7     12
-##  7     8         3      b               NA                NA    NA     NA
-##  8     8         3      c               NA                NA    NA     NA
-##  9     8         3      d               NA                NA    NA     NA
-## 10     8         3      e               NA                NA    NA     NA
-## # ... with 8,910 more rows</code></pre>
+<pre><code>## # A tibble: 8,920 x 8
+##     cons s7c7gp01 NOMBRE_GRUPO member num_hours_or_min code_hours_or_min
+##    &lt;chr&gt;    &lt;chr&gt;        &lt;chr&gt;  &lt;chr&gt;            &lt;dbl&gt;             &lt;chr&gt;
+##  1     1        4         AVES      a                1                 1
+##  2     1        4         AVES      b                1                 1
+##  3     1        4         AVES      c                1                 1
+##  4     1        4         AVES      d               NA              &lt;NA&gt;
+##  5     1        4         AVES      e               NA              &lt;NA&gt;
+##  6    10        1        RESES      a               30                 2
+##  7    10        1        RESES      b               NA              &lt;NA&gt;
+##  8    10        1        RESES      c               NA              &lt;NA&gt;
+##  9    10        1        RESES      d               NA              &lt;NA&gt;
+## 10    10        1        RESES      e               NA              &lt;NA&gt;
+## # ... with 8,910 more rows, and 2 more variables: days &lt;dbl&gt;, months &lt;dbl&gt;</code></pre>
 <p>Una vez hechos los joins en la tabla labor, ahora es posible calcular para cada miembro del hogar el número de horas que le dedican a cada grupo animal.</p>
 <pre class="r"><code>calcularHora  &lt;- function(tiempo, codigoTiempo){
                                                 ifelse(codigoTiempo == 1, tiempo, 
@@ -569,35 +594,32 @@ ganaderia_household_labor</code></pre>
 
 ganaderia_household_labor &lt;- mutate(ganaderia_household_labor, 
                                     horasDia = calcularHora(num_hours_or_min, code_hours_or_min)) %&gt;%
-  
                              mutate(horasSemana = horasDia * days) %&gt;%
-                             mutate(horasAno = horasSemana * months)
+                             mutate(horasMes = horasSemana * 4) %&gt;%
+                             mutate(horasAno = horasMes * months)
 
 guardarTablaProcesada(ganaderia_household_labor)</code></pre>
 <p>Finalmente, se agrega la información de la tabla por hogar y grupo animal.</p>
-<pre class="r"><code>labor &lt;- ganaderia_household_labor %&gt;% 
-        
-         group_by(cons, s7c7gp01) %&gt;% 
+<pre class="r"><code>labor &lt;- ganaderia_household_labor %&gt;%
+  
+         group_by(s7c7gp01, NOMBRE_GRUPO) %&gt;% 
   
          summarise(horas_ano = sum(horasAno, na.rm = TRUE)) %&gt;%
   
-         arrange(cons, s7c7gp01)
-labor</code></pre>
-<pre><code>## # A tibble: 1,784 x 3
-## # Groups:   cons [1,130]
-##     cons  s7c7gp01 horas_ano
-##    &lt;dbl&gt; &lt;dbl+lbl&gt;     &lt;dbl&gt;
-##  1     1         4    252.00
-##  2     8         3    168.00
-##  3     9         4    588.00
-##  4    10         1     42.00
-##  5    10         6     15.75
-##  6    14         4    168.00
-##  7    19         7     42.00
-##  8    22         4    154.00
-##  9    22         5    154.00
-## 10    36         4    150.00
-## # ... with 1,774 more rows</code></pre>
+         arrange(NOMBRE_GRUPO, s7c7gp01)
+
+guardarTablaProcesada(labor)</code></pre>
+<p>Tabla resumen:</p>
+<pre class="r"><code>labor %&gt;% group_by(NOMBRE_GRUPO) %&gt;% summarise(sum(horas_ano))</code></pre>
+<pre><code>## # A tibble: 6 x 2
+##   NOMBRE_GRUPO `sum(horas_ano)`
+##          &lt;chr&gt;            &lt;dbl&gt;
+## 1         AVES        236168.20
+## 2       CERDOS         83895.53
+## 3          CYB        168460.13
+## 4      EQUINOS        183179.27
+## 5         OTRO         10813.73
+## 6        RESES        194270.33</code></pre>
 <p><strong>Productos_ganade</strong></p>
 <p>En esta tercera base se incluyen preguntas de los siguientes cuadros: Cuadro 7I. Productos de orígen animal Cuadro 7J. Almacenaje y empaque de productos de orígen animal</p>
 <pre class="r"><code>prod_ganade &lt;- procesarSTATA(&quot;Productos_ganade&quot;)
