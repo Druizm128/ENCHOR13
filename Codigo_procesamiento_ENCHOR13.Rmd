@@ -229,22 +229,19 @@ ganaderia_produccion  <- prod_ganade_a %>%
                                            mun,           # clave municipio
                                            loc,           # clave localidad
                                            grupo,         # clave grupo 
-                                           s7c7ap01,      # clave animal 
-                                           s7c7bp08,      # num animales final 2013
-                                           s7c7bp09,      # dinero animales final 2013
-                                           s7c7dp01,      # num animales vendidos en el periodo
-                                           s7c7dp02,      # precio de venta
-                                           s7c7dp03a,     # monto de la venta en PESOS (888 no sabe)
-                                           s7c7dp03b,     # 01 venta por cabeza o 02 venta total
+                                           s7c7dp01,      # clave animal 
+                                           s7c7dp02,      # num animales vendidos en el periodo (0 si no vendieron)
+                                           s7c7dp03a,     # precio de venta
+                                           s7c7dp03b,     # 01 venta por cabeza o 02 venta total  
                                            s7c7dp05,      # vendió dentro/fuera localidad
                                            s7c7dp09_edo,  # clave estado de mpio y localidad
                                            s7c7dp08_mc,   # clave municipio de la localidad
                                            s7c7dp07_lc,   # clave localidad                                           
                                            s7c7dp11       # gasto en transporte para venta animales 
                                            ) %>%
-                                    mutate_at(vars("loc", "grupo","s7c7ap01","s7c7dp03b", "s7c7dp05",
-                                                   "s7c7dp07_lc", "s7c7dp09_edo", "s7c7dp08_mc","s7c7dp11"), funs(as.character)) %>%
-                                    mutate_at(vars("s7c7bp09", "s7c7dp01", "s7c7dp03a"), funs(as.numeric)) %>%
+                                    mutate_at(vars("cons","edo","mun", "loc", "grupo","s7c7dp01","s7c7dp03b", "s7c7dp05",
+                                                   "s7c7dp07_lc", "s7c7dp09_edo", "s7c7dp08_mc"), funs(as.character)) %>%
+                                    mutate_at(vars("s7c7dp02", "s7c7dp03a","s7c7dp11"), funs(as.numeric)) %>%
                                     mutate(cons = sprintf("%04d", as.numeric(cons))) %>%
                                     mutate(edo = sprintf("%02d", as.numeric(edo))) %>%
                                     mutate(mun = sprintf("%03d", as.numeric(mun))) %>%
@@ -259,41 +256,50 @@ ganaderia_produccion  <- prod_ganade_a %>%
 ganaderia_produccion <- left_join(ganaderia_produccion, cat_estado, by = c("edo" = "CVE_ENT"))
 ganaderia_produccion <- left_join(ganaderia_produccion, cat_municipio, by = c("edo" = "CVE_ENT", "mun" = "CVE_MUN"))
 ganaderia_produccion <- left_join(ganaderia_produccion, cat_gpo_animal, by = c("grupo" = "COD_GPO"))
-ganaderia_produccion <- left_join(ganaderia_produccion, cat_animal, by = c("s7c7ap01" = "COD_ANIMAL"))
+ganaderia_produccion <- left_join(ganaderia_produccion, cat_animal, by = c("s7c7dp01" = "COD_ANIMAL"))
 
 #Guardar la tabla ganadería en la carpeta Bases_Hogares_Procesadas 
 guardarTablaProcesada(ganaderia_produccion)
 head(ganaderia_produccion)
-
+cbind(sapply(ganaderia_produccion, class))
 ```
+
+
 
 La tabla anterior se encuentra desagregada por hogar y tipo de animal. Para obtener la información de la producción y el valor económico de ésta, se necesita calcular el monto total vendido. En la base de datos este se encuentra reportado por cabeza o monto total. En este sentido el siguiente codigo crea un campo con el monto total.
 
+```{r}
+# Esta función calcula el monto total
+calcularMontoVentaTotal <- function(precioVenta, cantidadVenta, unidadDeVenta){
+                                      ifelse(unidadDeVenta == 1, precioVenta * cantidadVenta, 
+                                             ifelse(unidadDeVenta == 2, precioVenta, 
+                                                    ifelse(is.na(unidadDeVenta),0,0)))
+}
 
+
+# Calculo de la venta total
+ganaderia_produccion <- ganaderia_produccion %>% 
+                               mutate(montoVentaTotal = calcularMontoVentaTotal(
+                                                            s7c7dp03a,  # monto de venta (puede ser precio o monto total)
+                                                            s7c7dp02,  # num animales vendidos en el periodo
+                                                            s7c7dp03b) # 01 venta por cabeza o 02 venta total
+                               )
+
+
+guardarTablaProcesada(ganaderia_produccion)
+```
 
 
 ```{r}
-# Esta función calcula el monto total
-calcularMontoVentaTotal <- function(precioVenta, cantidadVenta, montoVenta, unidadDeVenta){
-                                      ifelse(unidadDeVenta == 1, precioVenta * cantidadVenta,
-                                      ifelse(unidadDeVenta == 2, montoVenta,
-                                      ifelse(is.na(unidadDeVenta),0,0)))
-}
+ganaderia_produccion_resumen <- ganaderia_produccion %>% 
+                                                group_by(cons, grupo, edo, mun, loc) %>% 
+                                                summarise(total = sum(as.numeric(montoVentaTotal), na.rm = TRUE))
+ganaderia_produccion_resumen <- left_join(ganaderia_produccion_resumen, cat_estado, by = c("edo" = "CVE_ENT"))
+ganaderia_produccion_resumen <- left_join(ganaderia_produccion_resumen, cat_municipio, by = c("edo" = "CVE_ENT", "mun" = "CVE_MUN"))
 
-# Calculo de la venta total
-
-
-
-
+guardarTablaProcesada(ganaderia_produccion_resumen)
 ```
 
-ganaderia_produccion <- ganaderia_produccion %>% 
-                               mutate(ganaderia_produccion, 
-                               montoVentaTotal = calcularMontoVentaTotal(s7c7dp02,  # precio de venta
-                                                                        s7c7dp01,  # num animales vendidos en el periodo
-                                                                        s7c7dp03a, # monto de la venta en PESOS (888 no sabe) 
-                                                                        s7c7dp03b) # 01 venta por cabeza o 02 venta total
-                               )
 
 **Produccion_ganade_ta**
 
