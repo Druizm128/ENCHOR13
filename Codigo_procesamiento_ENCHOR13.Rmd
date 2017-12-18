@@ -2,7 +2,7 @@
 title: 'Actualización de la base de datos del MARCEG V2.0'
 author: "Dante Ruiz"
 date: "7 de diciembre de 2017"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
@@ -115,11 +115,13 @@ Las siguientes librerías se utilizan para añadir funcionalidades especiales a la
 # install.packages("haven")
 # install.packages("dplyr")
 # install.packages("haven")
+# install.packages("tidyverse")
 
 # Cargar las librerías en el espacio de trabajo
 library(haven) # Librería para que R pueda leer bases de datos en STATA
 library(dplyr)   # Librería con un sintaxis especial para manipular tablas (data frames)
-library(tidyr)   # Librería con funciones para limpiar y estructurar tablas (data frames) 
+library(tidyr)   # Librería con funciones para limpiar y estructurar tablas (data frames)
+library(tidyverse)
 ```
 
 #### Funciones
@@ -129,12 +131,12 @@ Las siguientes funciones fueron definidas para simplificar tareas de procesamien
 * __procesaSTATA( "nombreArchivo" )__. Es una función  que de la carpeta Base de Hogares_DTA lee en R un archivo en formato STATA, lo carga en el espacio de trabajo, y dentro de la carpeta Bases_Hogares_CSV lo guarda en un archivo CSV para poder abrirlo en EXCEL. La función recibe un argumento en formato string, es decir entre " " con el nombre del archvio. Es preciso mencionar que no se tiene que indicar la extensión del archivo dta.
 
 ```{r}
-procesarSTATA <- function(nombreArchivo){
+procesarSTATA <- function(nombreArchivo, ...){
                     # Area de oportunidad. Ver como en windows se puede abreviar el working directory para no tener que escribir toda la ruta.
                     inputStataDirectory <- "Base de Hogares_DTA/"
-                    tablaSTATA = read_dta(paste(inputStataDirectory,nombreArchivo,".dta", sep = ""))
+                    tablaSTATA = read_dta(paste(inputStataDirectory,nombreArchivo,".dta", sep = "", ...))
                     outputCSVDirectory <- "Bases_Hogares_CSV/"
-                    write.csv(tablaSTATA, file = paste(outputCSVDirectory,nombreArchivo,".csv", sep = ""))
+                    write.csv(tablaSTATA, file = paste(outputCSVDirectory,nombreArchivo,".csv", sep = ""), row.names=FALSE)
                     return(tablaSTATA)                    
                     }
 ```
@@ -144,93 +146,420 @@ procesarSTATA <- function(nombreArchivo){
 guardarTablaProcesada <- function(tabla){
                                           nombreArchivo <- deparse(substitute(tabla))  
                                           outputTablasProcesadas <- "Bases_Hogares_Procesadas/"
-                                          write.csv(tabla, file = paste(outputTablasProcesadas,nombreArchivo,".csv", sep = ""))
+                                          write.csv(tabla, file = paste(outputTablasProcesadas,nombreArchivo,".csv", sep = ""), row.names=FALSE)
                                           }
 ```
 
 
 ## Procesamiento y limpieza de datos
 
-### Ganadería
+## Ganadería
 
-Las siguientes bases de datos corresponden a la SECCION 7. GANADERIA de la ENCHOR.
-Observación: Esta base datos es sobre los animales que los hogares han tenido de noviembre de 2012 a octubre de 2013.
+En esta sección se describe el proceso para limpiar la ENCHOR correspondiente al sector ganadero y producir el input que necesita el MARCEG.
 
-#### Catálogos
+Los resultados de los cuestionarios correspondientes a la SECCION 7. GANADERIA de la ENCHOR 2013 están distribuidos en los siguientes **archivos**:
 
-Se hicieron los siguientes catálogos para clasificar campos en la base de datos: 
+* Produccion_ganade_a.dta:
+    + Esta base datos es sobre los animales que los hogares han tenido de noviembre de 2012 a octubre de 2013.
+    + Cuadro 7A. Tipo de Animal
+    + Cuadro 7B. Contabilidad
+    + Cuadro 7C. Compras
+    + Cuadro 7D. Ventas
+* Produccion_ganade_ta.dta
+    + Cuadro 7E. Alimentación de los animales
+    + Cuadro 7F. Pastos e insumos
+    + Cuadro 7G. Mano de obra
+    + Cuadro 7H. Apoyo gubernamental
+* Productos_ganade.dta
 
-* Catalogo_grupo_animal
-* Catalogo_animales
+Se hicieron los siguientes **catálogos** para clasificar campos en la base de datos: 
+
+* catalogo_grupo_animal.csv
+* catalogo_animales.csv
+* catalogo_estado.csv
+* catalogo_municipio.csv
+
 ```{r}
 inputCatGpoAnimal <- "Catalogos/catalogo_grupo_animal.csv"
-cat_gpo_animal <- read.csv(inputCatGpoAnimal, colClasses = c("character","character"))
+cat_gpo_animal <- read_csv(inputCatGpoAnimal, 
+                           col_types = cols( COD_GPO = col_character(),
+                                             NOMBRE_GRUPO = col_character()
+                                            ))
 
 inputCatAnimal <- "Catalogos/catalogo_animales.csv"
-cat_animal <- read.csv(inputCatAnimal, colClasses = c("character","character"))
+cat_animal <- read_csv(inputCatAnimal, col_types = cols( COD_ANIMAL = col_character(),
+                                                         NOMBRE_ANIMAL = col_character()
+                                                        ))
+
+inputCatEstado <- "Catalogos/catalogo_estado.csv"
+cat_estado <- read.csv(inputCatEstado) %>% 
+              mutate(CVE_ENT = sprintf("%02d", CVE_ENT))
+
+
+inputCatMunicipio <- "Catalogos/catalogo_municipio.csv"
+cat_municipio <- read.csv(inputCatMunicipio) %>% 
+              mutate(CVE_ENT = sprintf("%02d", CVE_ENT)) %>%
+              mutate(CVE_MUN = sprintf("%03d", CVE_MUN))
+
 ```
 
-**Produccion_ganade_a**
+### Producción (Q)
 
-Esta primera base de datos incluye las preguntas de los cuadros siguientes:
+Para obtener la producción del sector ganadero se utiliza la tabla de stata **Produccion_ganade_a**. Esta tabla incluye las preguntas y respuestas de los cuadros siguientes:
+
 * Cuadro 7A. Tipo de Animal
 * Cuadro 7B. Contabilidad
 * Cuadro 7C. Compras
 * Cuadro 7D. Ventas
 
 ```{r}
+# Cargar base de datos en formato STATA a R y guardar base de datos en formato CSV. 
 prod_ganade_a <- procesarSTATA("Produccion_ganade_a")
+
+# Desplegar el nombre de los campos
 names(prod_ganade_a)
+
+nrow(prod_ganade_a)
 ```
 
-Con la información de esta base de datos se va a construir una nueva tabla de ganadería con información de la producción con los campos que requiere el MARCEG.
+Se construye una tabla solo con los campos que se necesitan para sacar la producción de los hogares rurales. Asimismo, hacen los joins correspondientes para incluir de los catalogos el nombre de la entidad federativa, municipio, grupo del animal y nombre del animal.
 
 ```{r}
-
-
+# Crear tabla ganaderia_produccion
 ganaderia_produccion  <- prod_ganade_a %>%
                                     select(cons,          # número de cuestionario
                                            edo,           # clave estado
                                            mun,           # clave municipio
                                            loc,           # clave localidad
                                            grupo,         # clave grupo 
-                                           s7c7ap01,      # clave animal 
-                                           s7c7bp08,      # num animales final 2013
-                                           s7c7bp09,      # dinero animales final 2013
-                                           s7c7dp01,      # num animales vendidos en el periodo
-                                           s7c7dp02,      # precio de venta
-                                           s7c7dp03a,     # monto de la venta en PESOS (888 no sabe)
-                                           s7c7dp03b,      # 01 venta por cabeza o 02 venta total
-                                           s7c7dp05,       # vendió dentro/fuera localidad
-                                           s7c7dp07_lc,    # clave localidad
-                                           s7c7dp08_mc,    # clave municipio de la localidad
-                                           s7c7dp09_edo,   # clave estado de mpio y localidad
+                                           s7c7dp01,      # clave animal 
+                                           s7c7dp02,      # num animales vendidos en el periodo (0 si no vendieron)
+                                           s7c7dp03a,     # precio de venta
+                                           s7c7dp03b,     # 01 venta por cabeza o 02 venta total  
+                                           s7c7dp05,      # vendió dentro/fuera localidad
+                                           s7c7dp09_edo,  # clave estado de mpio y localidad
+                                           s7c7dp08_mc,   # clave municipio de la localidad
+                                           s7c7dp07_lc,   # clave localidad                                           
                                            s7c7dp11       # gasto en transporte para venta animales 
-                                           )
+                                           ) %>%
+                                    mutate_at(vars("cons","edo","mun", "loc", "grupo","s7c7dp01","s7c7dp03b", "s7c7dp05",
+                                                   "s7c7dp07_lc", "s7c7dp09_edo", "s7c7dp08_mc"), funs(as.character)) %>%
+                                    mutate_at(vars("s7c7dp02", "s7c7dp03a","s7c7dp11"), funs(as.numeric)) %>%
+                                    mutate(cons = sprintf("%04d", as.numeric(cons))) %>%
+                                    mutate(edo = sprintf("%02d", as.numeric(edo))) %>%
+                                    mutate(mun = sprintf("%03d", as.numeric(mun))) %>%
+                                    mutate(loc = sprintf("%04d", as.numeric(loc)))
+                                    # Para ajustar el formato hay que quitar NAs
+                                    #mutate(edo_venta = sprintf("%02d", as.numeric(s7c7dp09_edo))) %>%
+                                    #mutate(mun_venta = sprintf("%03d", as.numeric(s7c7dp08_mc))) %>%
+                                    #mutate(loc_venta = sprintf("%04d", as.numeric(s7c7dp07_lc)))
+
+
 # Hacer el join de catálogos
+ganaderia_produccion <- left_join(ganaderia_produccion, cat_estado, by = c("edo" = "CVE_ENT"))
+ganaderia_produccion <- left_join(ganaderia_produccion, cat_municipio, by = c("edo" = "CVE_ENT", "mun" = "CVE_MUN"))
+ganaderia_produccion <- left_join(ganaderia_produccion, cat_gpo_animal, by = c("grupo" = "COD_GPO"))
+ganaderia_produccion <- left_join(ganaderia_produccion, cat_animal, by = c("s7c7dp01" = "COD_ANIMAL"))
+
+```
+La tabla anterior se encuentra desagregada por hogar y tipo de animal. Para obtener la información de la producción y el valor económico de ésta, se necesita calcular el monto total vendido. En la base de datos este se encuentra reportado por cabeza o monto total. En este sentido el siguiente codigo crea un campo con el monto total.
+
+```{r}
+# Esta función calcula el monto total
+calcularMontoVentaTotal <- function(precioVenta, cantidadVenta, unidadDeVenta){
+                                      ifelse(unidadDeVenta == 1, precioVenta * cantidadVenta, 
+                                             ifelse(unidadDeVenta == 2, precioVenta, 
+                                                    ifelse(is.na(unidadDeVenta),0,0)))
+}
 
 
-#Guardar la tabla ganadería en la carpeta Bases_Hogares_Procesadas 
-guardarTablaProcesada(ganaderia_produccion)
-
+# Calculo de la venta total
+ganaderia_produccion <- ganaderia_produccion %>% 
+                               mutate(montoVentaTotal = calcularMontoVentaTotal(
+                                                            s7c7dp03a,  # monto de venta (puede ser precio o monto total)
+                                                            s7c7dp02,  # num animales vendidos en el periodo
+                                                            s7c7dp03b) # 01 venta por cabeza o 02 venta total
+                               )
 ```
 
 
+El siguiente codigo genera la tabla final de la producción del sector ganadero. La información presentada corresponde al número y monto de la venta de animales agrupado por hogar y tipo de animal. Cuando el valor de la venta es cero es porque los hogares no vendieron animales de ese grupo.
+
+```{r}
+valorProduccionGanadera <- ganaderia_produccion %>% 
+                                                group_by(cons, edo, NOM_ENT, mun, NOM_MUN, grupo, NOMBRE_GRUPO) %>% 
+                                                # cantidad
+                                                summarise(monto_venta = sum(as.numeric(montoVentaTotal), na.rm = TRUE))
 
 
-**Produccion_ganade_ta**
+animalesVendidos <- ganaderia_produccion %>% 
+                                                group_by(cons, grupo) %>% 
+                                                # cantidad
+                                                summarise(animales_venta = sum(as.numeric(s7c7dp02), na.rm = TRUE))
+
+
+ganaderia_produccion <- left_join(valorProduccionGanadera, animalesVendidos, by = c("cons" = "cons", "grupo" = "grupo"))
+
+head(ganaderia_produccion,10)
+
+guardarTablaProcesada(ganaderia_produccion)
+```
+
+#### Mano de Obra (Labor)
+
+La información de la mano de obra en el sector ganadero se obtiene de la tabla **Produccion_ganade_ta**, la cual distingue entre el trabajo realizado por miembros del hogar y el trabajo contratado.
 
 En esta segunda base se incluyen preguntas de los siguientes cuadros:
-*Cuadro 7E. Alimentación de los animales
-*Cuadro 7F. Pastos e insumos
-*Cuadro 7G. Mano de obra
-*Cuadro 7H. Apoyo gubernamental
-*Observaciones: Las preguntas de los cuadros 7E a 7H se aplican por grupo de animal
+
+* Cuadro 7E. Alimentación de los animales
+* Cuadro 7F. Pastos e insumos
+* Cuadro 7G. Mano de obra
+* Cuadro 7H. Apoyo gubernamental
+* Observaciones: Las preguntas de los cuadros 7E a 7H se aplican por grupo de animal
+
+El siguiente código carga la tabla mencionada y enlista los campos contenidos en ella.
+
 ```{r}
+# Cargar base de datos en formato STATA a R y guardar base de datos en formato CSV. 
 prod_ganade_ta <- procesarSTATA("Produccion_ganade_ta")
+# Desplegar el nombre de los campos
 names(prod_ganade_ta)
 ```
 
+Para objeto del MARCEG, la mano de obra se necesita calcular como las horas que el hogar le dedica a las actividades del sector ganadero.
+
+El cuestionario **"Cuadro 7G. Mano de obra"** se encuentra dividido en *"MANO DE OBRA DEL HOGAR"* y *"MANO DE OBRA CONTRATADA"*, la primera considera miembros del hogar que se dedican a esta actividad y la segunda considera personas externas contratadas por el hogar para esta actividad.
+
+Debido a que la tabla **Produccion_ganade_ta** reporta los resultados por miembro del hogar en formato de columnas, el proceso para limpiar la tabla de resultados es la siguiente:
+
+1. Extraer una tabla con las respuestas de la sección de *"MANO DE OBRA DEL HOGAR"* y otra para *"MANO DE OBRA CONTRATADA"*.
+
+Para cada una de estas nuevas tablas generadas:
+
+2. Filtrar la pregunta de si hubo miembros del hogar que atendieron animales / personal contratado para atender animales.
+3. Convertir de formato de columnas a formato de renglones la información de "horas y minutos", "codigo horas y minutos", "número de días a la semana" y "número de días al mes" que vienen reportadas por miembro del hogar A, B, C, D y E.
+4. Calcular las horas de trabajo dedicadas por hogar y grupo de animal por día, semana, mes y año.
+
+**a) Mano de obra de miembros del hogar**
+
+A continuación se describe cómo obtener el número de horas totales al año de los miembros del hogar. La información se encuentra agregada por hogar y tipo de animal.
+
+De la tabla **Produccion_ganade_ta** se construyen 4 tablas:
+
+* horas y minutos
+* código horas y minutos
+* número de días a la semana
+* número de meses en el año
+* número de días al mes
+
+Cada una de estas tablas se manipula para que cada miembro del hogar A, B, C, D y E que se encuentra en formato de columnas se convierta en un renglón. Adicionalmente, se construye una llave de miembros del hogar extrayendo la letra clave de lo que antes era el nombre del campo. 
+```{r}
+# Función para extraer el campo de miembro del hogar
+cleanKey <- function(key, start, end){
+  substring(key,start,end)
+}
+
+# horas y minutos
+ganaderia_household_labor_time  <- prod_ganade_ta %>%
+                                    
+                                    filter(s7c7gp02 == 1) %>% # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
+  
+                                    select(
+                                           cons,          # número de cuestionario
+                                           edo,           # clave estado
+                                           mun,           # clave municipio
+                                           loc,           # clave localidad                                            
+                                           s7c7gp01,      # Grupo animal
+                                           s7c7gp04a,     # Persona A: número horas o minutos al día le trabajó
+                                           s7c7gp04b,     # Persona B: número horas o minutos al día le trabajó
+                                           s7c7gp04c,     # Persona C: número horas o minutos al día le trabajó
+                                           s7c7gp04d,     # Persona D: número horas o minutos al día le trabajó
+                                           s7c7gp04e      # Persona E: número horas o minutos al día le trabajó
+                                           ) %>%
+  
+                                    arrange(cons, s7c7gp01) %>%
+  
+                                    gather(6:10, key = "householdMember", value = "num_hours_or_min") %>%
+                                    
+                                    mutate(member = cleanKey(householdMember,9,9)) %>%
+  
+                                    mutate_at(vars("cons","edo","mun","loc","s7c7gp01", "householdMember","member"), funs(as.character))
+
+# codigo horas y minutos
+ganaderia_household_labor_code_time  <- prod_ganade_ta %>%
+                                    
+                                    filter(s7c7gp02 == 1) %>% # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
+  
+                                    select(
+                                           cons,          # número de cuestionario     
+                                           edo,           # clave estado
+                                           mun,           # clave municipio
+                                           loc,           # clave localidad      
+                                           s7c7gp01,      # Grupo animal
+                                           s7c7gp04_ca,   # Persona A: código horas (1) o minutos (2)
+                                           s7c7gp04_cb,   # Persona B: código horas (1) o minutos (2)
+                                           s7c7gp04_cc,   # Persona C: código horas (1) o minutos (2)
+                                           s7c7gp04_cd,   # Persona D: código horas (1) o minutos (2)
+                                           s7c7gp04_ce   # Persona E: código horas (1) o minutos (2)
+                                           ) %>%
+  
+                                    arrange(cons, s7c7gp01) %>%
+  
+                                    gather(6:10, key = "householdMember", value = "code_hours_or_min") %>%
+  
+                                    mutate(member = cleanKey(householdMember,11,11))  %>%
+  
+                                    mutate_all(funs(as.character))
+
+# número de días a la semana
+ganaderia_household_labor_code_days  <- prod_ganade_ta %>%
+                                    
+                                    filter(s7c7gp02 == 1) %>% # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
+  
+                                    select(
+                                           cons,          # número de cuestionario
+                                           edo,           # clave estado
+                                           mun,           # clave municipio
+                                           loc,           # clave localidad      
+                                           s7c7gp01,      # Grupo animal
+                                           s7c7gp05a,     # Persona A: número de días a la semana
+                                           s7c7gp05b,     # Persona B: número de días a la semana
+                                           s7c7gp05c,     # Persona C: número de días a la semana
+                                           s7c7gp05d,     # Persona D: número de días a la semana
+                                           s7c7gp05e     # Persona E: número de días a la semana
+                                           ) %>%
+  
+                                    arrange(cons, s7c7gp01) %>%
+  
+                                    gather(6:10, key = "householdMember", value = "days") %>%
+  
+                                    mutate(member = cleanKey(householdMember,9,9)) %>%
+  
+                                    mutate_at(vars("cons","edo","mun","loc","s7c7gp01", "householdMember", "member"),funs(as.character))
+
+# número de días al mes
+ganaderia_household_labor_code_months  <- prod_ganade_ta %>%
+                                    
+                                    filter(s7c7gp02 == 1) %>% # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
+  
+                                    select(
+                                           cons,          # número de cuestionario     
+                                           edo,           # clave estado
+                                           mun,           # clave municipio
+                                           loc,           # clave localidad      
+                                           s7c7gp01,      # Grupo animal
+                                           s7c7gp06a,     # Persona A: número de meses
+                                           s7c7gp06b,     # Persona B: número de meses
+                                           s7c7gp06c,     # Persona C: número de meses
+                                           s7c7gp06d,     # Persona D: número de meses
+                                           s7c7gp06e      # Persona E: número de meses
+                                           ) %>%
+  
+                                    arrange(cons, s7c7gp01) %>%
+  
+                                    gather(6:10, key = "householdMember", value = "months") %>%
+  
+                                    mutate(member = cleanKey(householdMember,9,9)) %>%
+  
+                                    mutate_at(vars("cons","edo","mun","loc", "s7c7gp01", "householdMember", "member"),funs(as.character))
+```
+Una vez que se cuentan con las 4 tablas estas se deben cruzar para formar una sola tabla llamada ** labor ** . El cruce se debe hacer en 4 etapas. Primero se hace un join entre las tablas horas y minutos que se llamará labor; después en la nueva tabla labor se hace un join con el código horas y minutos; después entre labor y días a la semana; y finalmente entre labor y el número de meses al año.
+
+```{r}
+# Joins para formar una sola tabla de labor a partir de las cuatro tablas extraídas.
+ganaderia_household_labor <- left_join(ganaderia_household_labor_time, ganaderia_household_labor_code_time, 
+                                       by = c("cons"= "cons", "s7c7gp01" = "s7c7gp01", "member" = "member"))
+
+ganaderia_household_labor <- left_join(ganaderia_household_labor, ganaderia_household_labor_code_days, 
+                                       by = c("cons"= "cons", "s7c7gp01" = "s7c7gp01", "member" = "member"))
+
+ganaderia_household_labor <- left_join(ganaderia_household_labor, ganaderia_household_labor_code_months, 
+                                       by = c("cons"= "cons", "s7c7gp01" = "s7c7gp01", "member" = "member"))
+
+ganaderia_household_labor <- left_join(ganaderia_household_labor, cat_gpo_animal, by = c("s7c7gp01" ="COD_GPO"))
+
+```
+```{r}
+# Extracción de campos relevantes
+ganaderia_household_labor <-  select(ganaderia_household_labor, 
+                                     cons, 
+                                     edo.x,           # clave estado
+                                     mun.x,           # clave municipio
+                                     loc.x,           # clave localidad      
+                                     s7c7gp01,
+                                     NOMBRE_GRUPO,
+                                     member, 
+                                     num_hours_or_min, 
+                                     code_hours_or_min, 
+                                     days, 
+                                     months) %>%
+                             arrange(cons, s7c7gp01, member)
+head(ganaderia_household_labor)                    
+```
+
+Una vez hechos los joins en la tabla labor, ahora es posible calcular para cada miembro del hogar el número de horas que le dedican a cada grupo animal.
+
+```{r}
+# Función para construir un solo campo de tiempo en horas día
+calcularHora  <- function(tiempo, codigoTiempo){
+                                                ifelse(codigoTiempo == 1, tiempo, 
+                                                ifelse(codigoTiempo == 2, tiempo/60, 
+                                                ifelse(is.na(tiempo), 0, 
+                                                ifelse(is.nan(tiempo), 0, 0))))
+}
+
+# Cálculo de horas a la semana, mes y año, así como renombre de campos
+ganaderia_household_labor <- mutate(ganaderia_household_labor, 
+                                    horasDia = calcularHora(num_hours_or_min, code_hours_or_min)) %>%
+                             mutate(horasSemana = horasDia * days) %>%
+                             mutate(horasMes = horasSemana * 4) %>%
+                             mutate(horasAno = horasMes * months) %>%
+                             mutate(cons = sprintf("%04d", as.numeric(cons))) %>%
+                             mutate(edo.x = sprintf("%02d", as.numeric(edo.x))) %>%
+                             mutate(mun.x = sprintf("%03d", as.numeric(mun.x))) %>%
+                             mutate(loc.x = sprintf("%04d", as.numeric(loc.x))) %>%
+                             rename(cve_edo = edo.x,
+                                    cve_mun = mun.x,
+                                    cve_loc = loc.x,
+                                    grupo_animal = NOMBRE_GRUPO,
+                                    miembro_hogar = member
+                                    )
+# Joins de catalogos estado y municipio
+ganaderia_household_labor <- left_join(ganaderia_household_labor,cat_estado, by = c("cve_edo" = "CVE_ENT"))
+ganaderia_household_labor <- left_join(ganaderia_household_labor, cat_municipio, by = c("cve_edo" = "CVE_ENT", "cve_mun" = "CVE_MUN"))
+                            
+guardarTablaProcesada(ganaderia_household_labor)
+head(ganaderia_household_labor)
+```
+
+
+Finalmente, se agrega la información de la tabla por hogar y grupo animal.
+
+```{r}
+# Agregación de la tabla trabajo para dar formato final.
+labor <- ganaderia_household_labor %>%
+         
+         group_by(cons, cve_edo, NOM_ENT, cve_mun, NOM_MUN, cve_loc, grupo_animal) %>% 
+  
+         summarise(horas_anuales = sum(horasAno, na.rm = TRUE)) %>%
+  
+         arrange(grupo_animal)
+
+guardarTablaProcesada(labor)
+
+head(labor, 10)
+nrow(labor)
+```
+
+Tabla resumen:
+
+```{r}
+labor %>% group_by(grupo_animal) %>% summarise(horas_anuales = sum(horas_anuales)) %>% arrange(desc(horas_anuales))
+```
+
+**b) Mano de obra contratada por el hogar ** 
+
+Hasta aqui vamos!
 
 ```{r}
 ganaderia_fact_prod  <- prod_ganade_ta %>%
@@ -290,56 +619,12 @@ ganaderia_fact_prod  <- prod_ganade_ta %>%
                                            s7c7hp11_edo   # Estado 
                                            )
                                   
-# Agregar columnas de individuos A, B, C, D, E
+#Reemplazar NaNs con blanco ""
 
 
 #Guardar la tabla de factores de producción de la ganadería en la carpeta Bases_Hogares_Procesadas 
 guardarTablaProcesada(ganaderia_fact_prod)
-
 ```
-(Ojo) Dotación del tiempo del hogar
-
-Pasos para calcular en número de hogras que le dedica el hogar a la ganadería
-1) Sacar una tabla de sólo mano de obra del hogar
-- Hay que filtrar la pregunta hubo miembros del hogar involucrados
-2) Hacer ancha la tabla de labor por la variable código horas/minutos
-3) Sumar horas A B C D E 
-4) Sumar minutos A B C D E (convertir a horas)
-5) Sumar la columna de horas y de minutos convertidos a horas
-
-Repetir el mismo procedimiento para número de días, semanas y mes.
-
-
-```{r}
-ganaderia_household_labor_A  <- prod_ganade_ta %>%
-                                    
-                                    filter(s7c7gp02 == 1) %>% # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
-  
-                                    select(cons,          # número de cuestionario
-                                           s7c7gp01,      # Grupo animal
-                                           s7c7gp04a,     # Persona A: número horas o minutos al día le trabajó
-                                           s7c7gp04_ca   # Persona A: código horas (1) o minutos (2)
-                                           ) %>%
-                                    spread(s7c7gp04_ca,s7c7gp04a)
-names(ganaderia_household_labor_A) <- c("cons","s7c7gp01","horas_A","minutos_A")
-ganaderia_household_labor_A <- mutate(ganaderia_household_labor_A, min_en_hrs_A = minutos_A/60)
-
-ganaderia_household_labor_B  <- prod_ganade_ta %>%
-                                    
-                                    filter(s7c7gp02 == 1) %>% # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
-  
-                                    select(cons,          # número de cuestionario
-                                           s7c7gp01,      # Grupo animal
-                                           s7c7gp04b,     # Persona A: número horas o minutos al día le trabajó
-                                           s7c7gp04_cb   # Persona A: código horas (1) o minutos (2)
-                                           ) %>%
-                                    spread(s7c7gp04_cb,s7c7gp04b)
-names(ganaderia_household_labor_B) <- c("cons","s7c7gp01","horas_B","minutos_B")
-ganaderia_household_labor_B <- mutate(ganaderia_household_labor_B, min_en_hrs_B = minutos_B/60)
-
-# na.rm = TRUE
-```
-
 
 
 **Productos_ganade**
@@ -401,12 +686,3 @@ guardarTablaProcesada(ganaderia_productos)
 
 ```                                        
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
