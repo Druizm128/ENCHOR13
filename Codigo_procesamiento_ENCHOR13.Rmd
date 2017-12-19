@@ -9,6 +9,21 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Índice del documento
+
+* Introducción
+* Objetivo
+* Fuentes de información
+* Configuración de R
+    + Librerías
+    + Funciones
+* Procesamiento y limpieza de datos
+* Ganadería
+    + Producción
+    + Mano de obra
+    + Capital
+    + Tierra
+
 ## Introducción
 
 El Modelo de Agentes Rurales en un Contexto de Equilibrio General (MARCEG)es una herramienta para analizar el impacto de políticas públicas económicas, sociales, ambientales y tecnológicas, así como de cambio climático en la economía rural. El modelo permite visualizar de manera simultánea el impacto de las políticas en variables como la producción, ingreso, gasto, producto interno bruto y cambios en el uso de suelo.
@@ -22,17 +37,6 @@ Considerando lo anterior, se busca actualizar la base de datos con la que se cal
 ## Objetivo
 
 El propósito de este documento es documentar el procedimiento para procesar y limpiar las bases de datos originales de la Encuesta Coneval a Hogares Rurales 2013 (ENCHOR), para que se puedan utilizar en el MARCEG. De esta manera, se documentan observaciones a la base de datos, la descripción de los pasos y el código para obtener las tablas que requiere el modelo. El software que se utiliza para lograr este propósito de R-STATISTICS, un paquete estadístico open source.
-
-## Índice del documento
-
-* Introducción
-* Objetivo
-* Fuentes de información
-* Configuración de R
-    + Librerías
-    + Funciones
-* Procesamiento y limpieza de datos
-    + Ganadería
 
 ## Fuentes de información
 
@@ -198,8 +202,10 @@ cat_estado <- read.csv(inputCatEstado) %>%
 
 inputCatMunicipio <- "Catalogos/catalogo_municipio.csv"
 cat_municipio <- read.csv(inputCatMunicipio) %>% 
-              mutate(CVE_ENT = sprintf("%02d", CVE_ENT)) %>%
-              mutate(CVE_MUN = sprintf("%03d", CVE_MUN))
+              mutate(
+                      CVE_ENT = sprintf("%02d", CVE_ENT),
+                      CVE_MUN = sprintf("%03d", CVE_MUN)
+                      )
 
 ```
 
@@ -219,6 +225,7 @@ prod_ganade_a <- procesarSTATA("Produccion_ganade_a")
 # Desplegar el nombre de los campos
 names(prod_ganade_a)
 
+# Número de filas
 nrow(prod_ganade_a)
 ```
 
@@ -245,10 +252,12 @@ ganaderia_produccion  <- prod_ganade_a %>%
                                     mutate_at(vars("cons","edo","mun", "loc", "grupo","s7c7dp01","s7c7dp03b", "s7c7dp05",
                                                    "s7c7dp07_lc", "s7c7dp09_edo", "s7c7dp08_mc"), funs(as.character)) %>%
                                     mutate_at(vars("s7c7dp02", "s7c7dp03a","s7c7dp11"), funs(as.numeric)) %>%
-                                    mutate(cons = sprintf("%04d", as.numeric(cons))) %>%
-                                    mutate(edo = sprintf("%02d", as.numeric(edo))) %>%
-                                    mutate(mun = sprintf("%03d", as.numeric(mun))) %>%
-                                    mutate(loc = sprintf("%04d", as.numeric(loc)))
+                                    mutate(cons = sprintf("%04d", as.numeric(cons)),
+                                           edo = sprintf("%02d", as.numeric(edo)),
+                                           mun = sprintf("%03d", as.numeric(mun)),
+                                           loc = sprintf("%04d", as.numeric(loc)))
+
+
                                     # Para ajustar el formato hay que quitar NAs
                                     #mutate(edo_venta = sprintf("%02d", as.numeric(s7c7dp09_edo))) %>%
                                     #mutate(mun_venta = sprintf("%03d", as.numeric(s7c7dp08_mc))) %>%
@@ -494,7 +503,6 @@ ganaderia_household_labor <-  select(ganaderia_household_labor,
                                      days, 
                                      months) %>%
                              arrange(cons, s7c7gp01, member)
-head(ganaderia_household_labor)                    
 ```
 
 Una vez hechos los joins en la tabla labor, ahora es posible calcular para cada miembro del hogar el número de horas que le dedican a cada grupo animal.
@@ -509,27 +517,29 @@ calcularHora  <- function(tiempo, codigoTiempo){
 }
 
 # Cálculo de horas a la semana, mes y año, así como renombre de campos
-ganaderia_household_labor <- mutate(ganaderia_household_labor, 
-                                    horasDia = calcularHora(num_hours_or_min, code_hours_or_min)) %>%
-                             mutate(horasSemana = horasDia * days) %>%
-                             mutate(horasMes = horasSemana * 4) %>%
-                             mutate(horasAno = horasMes * months) %>%
-                             mutate(cons = sprintf("%04d", as.numeric(cons))) %>%
-                             mutate(edo.x = sprintf("%02d", as.numeric(edo.x))) %>%
-                             mutate(mun.x = sprintf("%03d", as.numeric(mun.x))) %>%
-                             mutate(loc.x = sprintf("%04d", as.numeric(loc.x))) %>%
-                             rename(cve_edo = edo.x,
-                                    cve_mun = mun.x,
-                                    cve_loc = loc.x,
-                                    grupo_animal = NOMBRE_GRUPO,
-                                    miembro_hogar = member
-                                    )
+ganaderia_household_labor <- ganaderia_household_labor %>% 
+                                    mutate(
+                                            horasDia = calcularHora(num_hours_or_min, code_hours_or_min),
+                                            horasSemana = horasDia * days,       
+                                            horasMes = horasSemana * 4,
+                                            horasAno = horasMes * months,
+                                            cons = sprintf("%04d", as.numeric(cons)),
+                                            edo.x = sprintf("%02d", as.numeric(edo.x)),
+                                            mun.x = sprintf("%03d", as.numeric(mun.x)),
+                                            loc.x = sprintf("%04d", as.numeric(loc.x))      
+                                            ) %>%
+                                    rename(
+                                            cve_edo = edo.x,
+                                            cve_mun = mun.x,
+                                            cve_loc = loc.x,
+                                            grupo_animal = NOMBRE_GRUPO,
+                                            miembro_hogar = member
+                                          )
 # Joins de catalogos estado y municipio
 ganaderia_household_labor <- left_join(ganaderia_household_labor,cat_estado, by = c("cve_edo" = "CVE_ENT"))
 ganaderia_household_labor <- left_join(ganaderia_household_labor, cat_municipio, by = c("cve_edo" = "CVE_ENT", "cve_mun" = "CVE_MUN"))
                             
-guardarTablaProcesada(ganaderia_household_labor)
-head(ganaderia_household_labor)
+head(ganaderia_household_labor,10)
 ```
 
 
@@ -545,87 +555,98 @@ labor <- ganaderia_household_labor %>%
   
          arrange(grupo_animal)
 
+# Guardar tabla final
 guardarTablaProcesada(labor)
-
+# Mostrar primeros 10 renglones de la tabla final
 head(labor, 10)
+# Número de filas
 nrow(labor)
 ```
 
 Tabla resumen:
 
 ```{r}
+# Cuadro resumen
 labor %>% group_by(grupo_animal) %>% summarise(horas_anuales = sum(horas_anuales)) %>% arrange(desc(horas_anuales))
 ```
 
-**b) Mano de obra contratada por el hogar ** 
+**b) Mano de obra contratada por el hogar** 
 
-Hasta aqui vamos!
+Para obtener el monto total de horas contratadas por el hogar se realiza un proceso similar al de la sección anterior. Se definió una función para calcular el número total de horas en función del número de trabajadores, el monto, el número de meses trabajados y la frecuencia del pago que reportó el jefe del hogar.
 
 ```{r}
-ganaderia_fact_prod  <- prod_ganade_ta %>%
+# Función que permite calcular el pago anual del total de hombres contratados
+calcularPagoTrabajoContratado <- function(trabajadores, pago, meses, frecuencia){
+                                            
+                                            # caso semana
+                                            ifelse(frecuencia == 1, trabajadores * pago * 4 * meses,
+                                            # caso mes       
+                                            ifelse(frecuencia == 2, trabajadores * pago  * meses, 
+                                            # total
+                                            ifelse(frecuencia == 3, trabajadores * pago, 
+                                            # NA                                            
+                                            ifelse(is.na(frecuencia), 0, 0))))
+                                }
+
+# Pipiline que extrae hombres contrtados en el sector de la ganadería por el hogar y calculo del pago anual
+# Solo se aplicó a los hombres porque mujeres no había.
+ganaderia_trabajo_contratado  <- prod_ganade_ta %>%
+                                    
+                                    filter(s7c7gp07 == 1) %>%                                  
+  
                                     select(cons,          # número de cuestionario
                                            edo,           # clave estado
                                            mun,           # clave municipio
                                            loc,           # clave localidad
                                            s7c7gp01,      # Grupo animal
                                            
-                                           s7c7gp02,      # Trabajaron miembros del hogar en ganadería 1 sí / 2 no
-                                           
-                                           s7c7gp03a,     # Persona A: miembro # del hogar
-                                           s7c7gp03b,     # Persona B: miembro # del hogar
-                                           s7c7gp03c,     # Persona C: miembro # del hogar
-                                           s7c7gp03d,     # Persona D: miembro # del hogar
-                                           s7c7gp03e,     # Persona E: miembro # del hogar
-                                           s7c7gp04a,     # Persona A: número horas o minutos al día le trabajó
-                                           s7c7gp04b,     # Persona B: número horas o minutos al día le trabajó
-                                           s7c7gp04c,     # Persona C: número horas o minutos al día le trabajó
-                                           s7c7gp04d,     # Persona D: número horas o minutos al día le trabajó
-                                           s7c7gp04e,     # Persona E: número horas o minutos al día le trabajó
-                                           s7c7gp04_ca,   # Persona A: código horas (1) o minutos (2)
-                                           s7c7gp04_cb,   # Persona B: código horas (1) o minutos (2)
-                                           s7c7gp04_cc,   # Persona C: código horas (1) o minutos (2)
-                                           s7c7gp04_cd,   # Persona D: código horas (1) o minutos (2)
-                                           s7c7gp04_ce,   # Persona E: código horas (1) o minutos (2)
-                                           s7c7gp05a,     # Persona A: número de días a la semana
-                                           s7c7gp05b,     # Persona B: número de días a la semana
-                                           s7c7gp05c,     # Persona C: número de días a la semana
-                                           s7c7gp05d,     # Persona D: número de días a la semana
-                                           s7c7gp05e,     # Persona E: número de días a la semana
-                                           s7c7gp06a,     # Persona A: número de meses
-                                           s7c7gp06b,     # Persona B: número de meses
-                                           s7c7gp06c,     # Persona C: número de meses
-                                           s7c7gp06d,     # Persona D: número de meses
-                                           s7c7gp06e,     # Persona E: número de meses
-                                           
                                            s7c7gp07,      # Hubo mano de obra contratada por tipo de animal sí (1) no (2)
                                            
-                                           s7c7gp08,      # num de hombres contratados
-                                           s7c7gp09,      # dinero en pesos pagado por hombre 
+                                           s7c7gp08,      # num de hombres contratados // numeric
+                                           s7c7gp09,      # dinero en pesos pagado por hombre  // numeric
                                            s7c7gp09_c,    # por semana (1), mes (2) o total (3)
-                                           s7c7gp10,      # num de meses
+                                           s7c7gp10,      # num de meses // numeric
                                            s7c7gp11,      # num de mujeres contratados
                                            s7c7gp12,      # dinero en pesos pagado por mjer
                                            s7c7gp12_c,    # por semana (1), mes (2) o total (3)
-                                           s7c7gp13,      # num de meses
-                                           
-                                           s7c7hp01,      # Código de grupo de animal
-                                           s7c7hp02,      # Acceso a PROGAN, si (1) no (2)
-                                           s7c7hp03,      # Cantidad recibida en pesos PROGAN    
-                                           s7c7hp06,      # Instalaciones para animales (P.ej. corrales,establos), si (1) no (2)
-                                           s7c7hp07,      # Gasto para mantenimiento de instalaciones, en pesos
-                                           s7c7hp08,      # lugar del gasto, en la loc. (1), otra loc. (2), USA (3), no sabe (888)
-                                           s7c7hp09_lc,   # Clave de la localidad
-                                           s7c7hp10_mc,   # Clave del municipio
-                                           s7c7hp11_edo   # Estado 
-                                           )
-                                  
-#Reemplazar NaNs con blanco ""
+                                           s7c7gp13      # num de meses
+                                           ) %>%
+                                    mutate(
+                                           cons = sprintf("%04d", as.numeric(cons)),
+                                           edo  = sprintf("%02d", as.numeric(edo)),
+                                           mun  = sprintf("%03d", as.numeric(mun)), 
+                                           loc  = sprintf("%04d", as.numeric(loc))
+                                          ) %>%
+                                    mutate_at(vars("s7c7gp01", "s7c7gp07", "s7c7gp09_c", "s7c7gp12_c"),funs(as.character)) %>%
+  
+                                    mutate( pagoAnual = calcularPagoTrabajoContratado(
+                                                                                      s7c7gp08, #trabajadores 
+                                                                                      s7c7gp09, #pago 
+                                                                                      s7c7gp10, #meses 
+                                                                                      s7c7gp09_c)) #frecuencia
 
-
-#Guardar la tabla de factores de producción de la ganadería en la carpeta Bases_Hogares_Procesadas 
-guardarTablaProcesada(ganaderia_fact_prod)
 ```
 
+Tabla de resultados.
+
+```{r}
+#Guardar la tabla de factores de producción de la ganadería en la carpeta Bases_Hogares_Procesadas 
+guardarTablaProcesada(ganaderia_trabajo_contratado)
+
+# Mostrar las primeras diez filas
+head(ganaderia_trabajo_contratado,10)
+```
+
+
+s7c7hp01,      # Código de grupo de animal
+s7c7hp02,      # Acceso a PROGAN, si (1) no (2)
+s7c7hp03,      # Cantidad recibida en pesos PROGAN    
+s7c7hp06,      # Instalaciones para animales (P.ej. corrales,establos), si (1) no (2)
+s7c7hp07,      # Gasto para mantenimiento de instalaciones, en pesos
+s7c7hp08,      # lugar del gasto, en la loc. (1), otra loc. (2), USA (3), no sabe (888)
+s7c7hp09_lc,   # Clave de la localidad
+s7c7hp10_mc,   # Clave del municipio
+s7c7hp11_edo   # Estado 
 
 **Productos_ganade**
 
