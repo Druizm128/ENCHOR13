@@ -321,20 +321,19 @@ head(ganaderia_produccion,10)
 ```
 
     ## # A tibble: 10 x 9
-    ## # Groups:   cons, edo, NOM_ENT, mun, NOM_MUN, grupo [10]
-    ##     cons   edo NOM_ENT   mun NOM_MUN grupo NOMBRE_GRUPO monto_venta
-    ##    <chr> <chr>  <fctr> <chr>  <fctr> <chr>        <chr>       <dbl>
-    ##  1  0001    15  México   051   Lerma     1        reses           0
-    ##  2  0001    15  México   051   Lerma     2      equinos           0
-    ##  3  0001    15  México   051   Lerma     3       cerdos           0
-    ##  4  0001    15  México   051   Lerma     4         aves           0
-    ##  5  0001    15  México   051   Lerma     5          cyb           0
-    ##  6  0002    15  México   051   Lerma     1        reses           0
-    ##  7  0002    15  México   051   Lerma     2      equinos           0
-    ##  8  0002    15  México   051   Lerma     3       cerdos           0
-    ##  9  0002    15  México   051   Lerma     4         aves           0
-    ## 10  0002    15  México   051   Lerma     5          cyb           0
-    ## # ... with 1 more variables: animales_venta <dbl>
+    ## # Groups: cons, edo, NOM_ENT, mun, NOM_MUN, grupo [10]
+    ##    cons  edo   NOM_ENT     mun   NOM_MUN grupo NOMBRE_GRUPO monto_… anima…
+    ##    <chr> <chr> <fctr>      <chr> <fctr>  <chr> <chr>          <dbl>  <dbl>
+    ##  1 0001  15    "M\xe9xico" 051   Lerma   1     reses              0      0
+    ##  2 0001  15    "M\xe9xico" 051   Lerma   2     equinos            0      0
+    ##  3 0001  15    "M\xe9xico" 051   Lerma   3     cerdos             0      0
+    ##  4 0001  15    "M\xe9xico" 051   Lerma   4     aves               0      0
+    ##  5 0001  15    "M\xe9xico" 051   Lerma   5     cyb                0      0
+    ##  6 0002  15    "M\xe9xico" 051   Lerma   1     reses              0      0
+    ##  7 0002  15    "M\xe9xico" 051   Lerma   2     equinos            0      0
+    ##  8 0002  15    "M\xe9xico" 051   Lerma   3     cerdos             0      0
+    ##  9 0002  15    "M\xe9xico" 051   Lerma   4     aves               0      0
+    ## 10 0002  15    "M\xe9xico" 051   Lerma   5     cyb                0      0
 
 ``` r
 guardarTablaProcesada(ganaderia_produccion)
@@ -627,22 +626,20 @@ head(ganaderia_household_labor,10)
 ```
 
     ## # A tibble: 10 x 17
-    ##     cons cve_edo cve_mun cve_loc s7c7gp01 grupo_animal miembro_hogar
-    ##    <chr>   <chr>   <chr>   <chr>    <chr>        <chr>         <chr>
-    ##  1  0001      15     051    0060        4         aves             a
-    ##  2  0001      15     051    0060        4         aves             b
-    ##  3  0001      15     051    0060        4         aves             c
-    ##  4  0001      15     051    0060        4         aves             d
-    ##  5  0001      15     051    0060        4         aves             e
-    ##  6  0010      15     051    0060        1        reses             a
-    ##  7  0010      15     051    0060        1        reses             b
-    ##  8  0010      15     051    0060        1        reses             c
-    ##  9  0010      15     051    0060        1        reses             d
-    ## 10  0010      15     051    0060        1        reses             e
-    ## # ... with 10 more variables: num_hours_or_min <dbl>,
-    ## #   code_hours_or_min <chr>, days <dbl>, months <dbl>, horasDia <dbl>,
-    ## #   horasSemana <dbl>, horasMes <dbl>, horasAno <dbl>, NOM_ENT <fctr>,
-    ## #   NOM_MUN <fctr>
+    ##    cons  cve_e… cve_m… cve_l… s7c7… grup… miemb… num_h… code_…  days mont…
+    ##    <chr> <chr>  <chr>  <chr>  <chr> <chr> <chr>   <dbl> <chr>  <dbl> <dbl>
+    ##  1 0001  15     051    0060   4     aves  a        1.00 1       7.00  12.0
+    ##  2 0001  15     051    0060   4     aves  b        1.00 1       7.00  12.0
+    ##  3 0001  15     051    0060   4     aves  c        1.00 1       7.00  12.0
+    ##  4 0001  15     051    0060   4     aves  d       NA    <NA>   NA     NA  
+    ##  5 0001  15     051    0060   4     aves  e       NA    <NA>   NA     NA  
+    ##  6 0010  15     051    0060   1     reses a       30.0  2       7.00  12.0
+    ##  7 0010  15     051    0060   1     reses b       NA    <NA>   NA     NA  
+    ##  8 0010  15     051    0060   1     reses c       NA    <NA>   NA     NA  
+    ##  9 0010  15     051    0060   1     reses d       NA    <NA>   NA     NA  
+    ## 10 0010  15     051    0060   1     reses e       NA    <NA>   NA     NA  
+    ## # ... with 6 more variables: horasDia <dbl>, horasSemana <dbl>, horasMes
+    ## #   <dbl>, horasAno <dbl>, NOM_ENT <fctr>, NOM_MUN <fctr>
 
 Finalmente, se agrega la información de la tabla por hogar y grupo animal.
 
@@ -663,20 +660,19 @@ head(labor, 10)
 ```
 
     ## # A tibble: 10 x 8
-    ## # Groups:   cons, cve_edo, NOM_ENT, cve_mun, NOM_MUN, cve_loc [10]
-    ##     cons cve_edo NOM_ENT cve_mun     NOM_MUN cve_loc grupo_animal
-    ##    <chr>   <chr>  <fctr>   <chr>      <fctr>   <chr>        <chr>
-    ##  1  0001      15  México     051       Lerma    0060         aves
-    ##  2  0009      15  México     051       Lerma    0060         aves
-    ##  3  0014      15  México     051       Lerma    0060         aves
-    ##  4  0022      15  México     051       Lerma    0013         aves
-    ##  5  0036      15  México     051       Lerma    0013         aves
-    ##  6  0042      15  México     067 Otzolotepec    0018         aves
-    ##  7  0043      15  México     067 Otzolotepec    0018         aves
-    ##  8  0044      15  México     067 Otzolotepec    0018         aves
-    ##  9  0047      15  México     067 Otzolotepec    0018         aves
-    ## 10  0048      15  México     067 Otzolotepec    0018         aves
-    ## # ... with 1 more variables: horas_anuales <dbl>
+    ## # Groups: cons, cve_edo, NOM_ENT, cve_mun, NOM_MUN, cve_loc [10]
+    ##    cons  cve_edo NOM_ENT     cve_mun NOM_MUN     cve_loc grupo_a… horas_a…
+    ##    <chr> <chr>   <fctr>      <chr>   <fctr>      <chr>   <chr>       <dbl>
+    ##  1 0001  15      "M\xe9xico" 051     Lerma       0060    aves       1008  
+    ##  2 0009  15      "M\xe9xico" 051     Lerma       0060    aves       2352  
+    ##  3 0014  15      "M\xe9xico" 051     Lerma       0060    aves        672  
+    ##  4 0022  15      "M\xe9xico" 051     Lerma       0013    aves        616  
+    ##  5 0036  15      "M\xe9xico" 051     Lerma       0013    aves        600  
+    ##  6 0042  15      "M\xe9xico" 067     Otzolotepec 0018    aves         28.0
+    ##  7 0043  15      "M\xe9xico" 067     Otzolotepec 0018    aves         16.8
+    ##  8 0044  15      "M\xe9xico" 067     Otzolotepec 0018    aves       1344  
+    ##  9 0047  15      "M\xe9xico" 067     Otzolotepec 0018    aves        336  
+    ## 10 0048  15      "M\xe9xico" 067     Otzolotepec 0018    aves        840
 
 ``` r
 # Número de filas
@@ -694,13 +690,13 @@ labor %>% group_by(grupo_animal) %>% summarise(horas_anuales = sum(horas_anuales
 
     ## # A tibble: 6 x 2
     ##   grupo_animal horas_anuales
-    ##          <chr>         <dbl>
-    ## 1         aves     236168.20
-    ## 2        reses     194270.33
-    ## 3      equinos     183179.27
-    ## 4          cyb     168460.13
-    ## 5       cerdos      83895.53
-    ## 6         otro      10813.73
+    ##   <chr>                <dbl>
+    ## 1 aves                236168
+    ## 2 reses               194270
+    ## 3 equinos             183179
+    ## 4 cyb                 168460
+    ## 5 cerdos               83896
+    ## 6 otro                 10814
 
 **b) Mano de obra contratada por el hogar**
 
@@ -756,7 +752,11 @@ ganaderia_trabajo_contratado  <- prod_ganade_ta %>%
                                                                                       s7c7gp09, #pago 
                                                                                       s7c7gp10, #meses 
                                                                                       s7c7gp09_c)) #frecuencia
+```
 
+Tabla de resultados.
+
+``` r
 #Guardar la tabla de factores de producción de la ganadería en la carpeta Bases_Hogares_Procesadas 
 guardarTablaProcesada(ganaderia_trabajo_contratado)
 
@@ -765,20 +765,20 @@ head(ganaderia_trabajo_contratado,10)
 ```
 
     ## # A tibble: 10 x 15
-    ##     cons   edo   mun   loc s7c7gp01 s7c7gp07 s7c7gp08 s7c7gp09 s7c7gp09_c
-    ##    <chr> <chr> <chr> <chr>    <chr>    <chr>    <dbl>    <dbl>      <chr>
-    ##  1  2075    18   015  0073        2        1        1      100          1
-    ##  2  1052    08   007  0001        1        1        2      900          2
-    ##  3  2200    20   260  0002        2        1        1      100          3
-    ##  4  2103    18   018  0013        1        1        1      100          1
-    ##  5  1943    32   038  0113        1        1        1      125          1
-    ##  6  1554    05   030  0073        1        1        1      100          3
-    ##  7  1571    10   004  0054        1        1        1      700          1
-    ##  8  0304    15   113  0021        5        1        1      100          1
-    ##  9  1754    11   037  0003        2        1        1        0       <NA>
-    ## 10  2389    20   406  0061        2        1        3      600          1
-    ## # ... with 6 more variables: s7c7gp10 <dbl>, s7c7gp11 <dbl>,
-    ## #   s7c7gp12 <dbl>, s7c7gp12_c <chr>, s7c7gp13 <dbl>, pagoAnual <dbl>
+    ##    cons  edo   mun   loc   s7c7… s7c7… s7c7… s7c7… s7c7… s7c7… s7c7… s7c7…
+    ##    <chr> <chr> <chr> <chr> <chr> <chr> <dbl> <dbl> <chr> <dbl> <dbl> <dbl>
+    ##  1 2075  18    015   0073  2     1      1.00   100 1     12.0      0    NA
+    ##  2 1052  08    007   0001  1     1      2.00   900 2      2.00     0    NA
+    ##  3 2200  20    260   0002  2     1      1.00   100 3     NA        0    NA
+    ##  4 2103  18    018   0013  1     1      1.00   100 1     12.0      0    NA
+    ##  5 1943  32    038   0113  1     1      1.00   125 1     12.0      0    NA
+    ##  6 1554  05    030   0073  1     1      1.00   100 3     NA        0    NA
+    ##  7 1571  10    004   0054  1     1      1.00   700 1     12.0      0    NA
+    ##  8 0304  15    113   0021  5     1      1.00   100 1     12.0      0    NA
+    ##  9 1754  11    037   0003  2     1      1.00     0 <NA>  12.0      0    NA
+    ## 10 2389  20    406   0061  2     1      3.00   600 1      1.00     0    NA
+    ## # ... with 3 more variables: s7c7gp12_c <chr>, s7c7gp13 <dbl>, pagoAnual
+    ## #   <dbl>
 
 s7c7hp01, \# Código de grupo de animal s7c7hp02, \# Acceso a PROGAN, si (1) no (2) s7c7hp03, \# Cantidad recibida en pesos PROGAN
 s7c7hp06, \# Instalaciones para animales (P.ej. corrales,establos), si (1) no (2) s7c7hp07, \# Gasto para mantenimiento de instalaciones, en pesos s7c7hp08, \# lugar del gasto, en la loc. (1), otra loc. (2), USA (3), no sabe (888) s7c7hp09\_lc, \# Clave de la localidad s7c7hp10\_mc, \# Clave del municipio s7c7hp11\_edo \# Estado
