@@ -1,8 +1,12 @@
 ---
-title: 'Actualización de la base de datos del MARCEG V2.0'
+title: "Actualización de la base de datos del MARCEG V2.0"
 author: "Dante Ruiz"
 date: "7 de diciembre de 2017"
-output: github_document
+output:
+  html_document:
+    df_print: paged
+  github_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -27,22 +31,27 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Introducción
 
 El Modelo de Agentes Rurales en un Contexto de Equilibrio General (MARCEG)es una herramienta para analizar el impacto de políticas públicas económicas, sociales, ambientales y tecnológicas, así como de cambio climático en la economía rural. El modelo permite visualizar de manera simultánea el impacto de las políticas en variables como la producción, ingreso, gasto, producto interno bruto y cambios en el uso de suelo.
+
 La unidad de estudio del MARCEG son los hogares rurales, los cuales pueden ser consumidores y/o productores. Así, el modelo plantea un problema de optimización donde el hogar maximiza su ingreso a partir de la maximización del beneficio (ganancias) de su producción. Posteriormente, el hogar maximiza su utilidad sujeto a su ingreso total máximo. 
-Así el MARCEG, consiste en un problema de optimización no lineal en un sistema de ecuaciones que permiten caracterizar el comportamiento de los hogares rurales a nivel de entidad federativa, región, localidad y mercados de factores productivos (tierra, trabajo, capital), bienes y servicios. Los parámetros de dichas ecuaciones se deben calibrar con información real para que puedan representar los patrones de la economía rural en México. Originalmente, cuando se diseñó el MARCEG V2.0 en 2015, la base de datos que se utilizó para calibrar el MARCEG fue la **Encuesta Nacional a Hogares Rurales (ENHRUM) de 2003** que desarrolló el Colegio de México (COLMEX).
+Así el MARCEG, consiste en un problema de optimización no lineal en un sistema de ecuaciones que permiten caracterizar el comportamiento de los hogares rurales a nivel de entidad federativa, región, localidad y mercados de factores productivos (tierra, trabajo, capital), bienes y servicios. 
+
+Los parámetros de dichas ecuaciones se deben calibrar con información real para que puedan representar los patrones de la economía rural en México. Originalmente, cuando se diseñó el MARCEG V2.0 en 2015, la base de datos que se utilizó para calibrar el MARCEG fue la **Encuesta Nacional a Hogares Rurales (ENHRUM) de 2003** que desarrolló el Colegio de México (COLMEX).
 
 La ENHRUM se diseñó con el objetivo de capturar características generales de los hogares rurales mexicanos como su ingreso, gasto, actividades productivas e información sobre migración. Las actividades productivas rurales consideradas son la agricultura, la ganadería, los recursos naturales y la de bienes y servicios.  La unidad de estudio es el hogar y se construyó una muestra de 1,546 hogares en 80 localidades distribuidas en 24 zonas geográficas.
 
-Considerando lo anterior, se busca actualizar la base de datos con la que se calibra el MARCEG utilizando la **Encuesta CONEVAL a hogares rurales de México 2013 (ENCHOR)**. La encuesta se realizó a una muestra representativa nacional 2300 hogares en localidades de 500 a 2,499 habitantes. El propósito de la encuesta es determinar una línea base de la capacidad productiva de los hogares rurales del país, al inicio de la implementación de la Cruzada contra el Hambre. La estructura de la encuesta es similar a la de la ENHRUM y aplicó cuestionarios relacionados a producción de cultivos, ganadería, bienes y servicios, recursos naturales y otros ingresos y gasto.
+Considerando lo anterior, se busca actualizar la base de datos con la que se calibra el MARCEG utilizando la **Encuesta CONEVAL a hogares rurales de México 2013 (ENCHOR)**. La encuesta se realizó a una muestra representativa nacional 2,300 hogares en localidades de 500 a 2,499 habitantes. El propósito de la encuesta es determinar una línea base de la capacidad productiva de los hogares rurales del país, al inicio de la implementación de la Cruzada contra el Hambre. La estructura de la encuesta es similar a la de la ENHRUM y aplicó cuestionarios relacionados a producción de cultivos, ganadería, bienes y servicios, recursos naturales y otros ingresos y gasto.
 
 ## Objetivo
 
-El propósito de este documento es documentar el procedimiento para procesar y limpiar las bases de datos originales de la Encuesta Coneval a Hogares Rurales 2013 (ENCHOR), para que se puedan utilizar en el MARCEG. De esta manera, se documentan observaciones a la base de datos, la descripción de los pasos y el código para obtener las tablas que requiere el modelo. El software que se utiliza para lograr este propósito de R-STATISTICS, un paquete estadístico open source.
+El propósito de este documento es documentar el procedimiento para procesar y limpiar las bases de datos originales de la Encuesta Coneval a Hogares Rurales 2013 (ENCHOR), para que se puedan utilizar en el MARCEG. De esta manera, se documentan observaciones a la base de datos, la descripción de los pasos y el código para obtener las tablas que requiere el modelo. Debido a que la base de datos maneja distintos temas sobre la economía rural, este documento utiliza el sector ganadero como ejemplo.
+
+El software que se utiliza para lograr este propósito es R-Statistics, un paquete estadístico open source. Se recomienda instalar R-Studio en la computadora para ejecutar el código. Asimismo, es posible que sea necesario modificar la ruta de los archivos en caso de que estos llegarán a causar algún problema.
 
 ## Fuentes de información
 
-La base de datos de la ENCHOR 2013 se puede descargar del portal [CONEVAL](http://www.coneval.org.mx/Informes/Evaluacion/ENCHOR_2013/ENCHOR_2013_DTA/ENCHOR_2013_DTA.zip). El archivo comprimido contiene una carpeta con  la base de datos de hogares, una base de datos de localidades y catalogos. Es preciso mencionar que las tablas de las bases de datos vienen en formato STATA.
+La base de datos de la ENCHOR 2013 se puede descargar del portal [CONEVAL](http://www.coneval.org.mx/Informes/Evaluacion/ENCHOR_2013/ENCHOR_2013_DTA/ENCHOR_2013_DTA.zip). El archivo comprimido contiene una carpeta con  la base de datos de hogares, una base de datos de localidades y catálogos. Es preciso mencionar que las tablas de las bases de datos vienen en formato STATA.
 
-Para el propósito de este proyecto se utilizarán la base de hogares y los catalogos, los cuales tienen la siguiente estructura.
+Para el propósito de este proyecto se utilizarán la base de hogares y los catálogos, los cuales tienen la siguiente estructura.
 
 * __Base de Hogares_DTA__
     + Activos
@@ -112,7 +121,7 @@ En esta sección se especifican las librerías que se requieren instalar y cargar 
 
 #### Librerías
 
-Las siguientes librerías se utilizan para añadir funcionalidades especiales a la distribución base de R para facilitar el procesamiento y limpieza de bases de datos. Se tienen que instalar previo y cargar previo a ejecutar el código de este documento. 
+Las siguientes librerías se utilizan para añadir funcionalidades especiales a la distribución base de R para facilitar el procesamiento y limpieza de bases de datos. Se tienen que instalar y cargar previo a ejecutar el código de este documento. 
 
 ```{r, message= FALSE}
 # Para instalar las liberías borrar el símbolo de # en las siguientes tres filas. Re introducir el símbolo # una vez instaladas.
@@ -132,7 +141,7 @@ library(tidyverse)
 
 Las siguientes funciones fueron definidas para simplificar tareas de procesamiento de las bases de datos.
 
-* __procesaSTATA( "nombreArchivo" )__. Es una función  que de la carpeta Base de Hogares_DTA lee en R un archivo en formato STATA, lo carga en el espacio de trabajo, y dentro de la carpeta Bases_Hogares_CSV lo guarda en un archivo CSV para poder abrirlo en EXCEL. La función recibe un argumento en formato string, es decir entre " " con el nombre del archvio. Es preciso mencionar que no se tiene que indicar la extensión del archivo dta.
+* __procesaSTATA( "nombreArchivo" )__. Es una función  que de la carpeta Base de Hogares_DTA lee en R un archivo en formato STATA, lo carga en el espacio de trabajo, y dentro de la carpeta Bases_Hogares_CSV lo guarda en un archivo CSV para poder abrirlo en EXCEL. La función recibe un argumento en formato string, es decir entre " " con el nombre del archivo. Es preciso mencionar que no se tiene que indicar la extensión del archivo dta.
 
 ```{r}
 procesarSTATA <- function(nombreArchivo, ...){
@@ -211,7 +220,7 @@ cat_municipio <- read.csv(inputCatMunicipio) %>%
 
 ### Producción (Q)
 
-Para obtener la producción del sector ganadero se utiliza la tabla de stata **Produccion_ganade_a**. Esta tabla incluye las preguntas y respuestas de los cuadros siguientes:
+Para obtener la producción del sector ganadero se utiliza la tabla de STATA **Produccion_ganade_a**. Esta tabla incluye las preguntas y respuestas de los cuadros siguientes:
 
 * Cuadro 7A. Tipo de Animal
 * Cuadro 7B. Contabilidad
@@ -229,7 +238,9 @@ names(prod_ganade_a)
 nrow(prod_ganade_a)
 ```
 
-Se construye una tabla solo con los campos que se necesitan para sacar la producción de los hogares rurales. Asimismo, hacen los joins correspondientes para incluir de los catalogos el nombre de la entidad federativa, municipio, grupo del animal y nombre del animal.
+Se observa que la tabla de producción ganadera incluye 41 campos y 40,524 registros.
+
+Ahora, se construye una tabla solo con los campos que se necesitan para sacar la producción de los hogares rurales. Asimismo, se hacen los JOINS correspondientes, para incluir de los catálogos: el nombre de la entidad federativa, municipio, grupo del animal y nombre del animal.
 
 ```{r}
 # Crear tabla ganaderia_produccion
@@ -270,8 +281,10 @@ ganaderia_produccion <- left_join(ganaderia_produccion, cat_municipio, by = c("e
 ganaderia_produccion <- left_join(ganaderia_produccion, cat_gpo_animal, by = c("grupo" = "COD_GPO"))
 ganaderia_produccion <- left_join(ganaderia_produccion, cat_animal, by = c("s7c7dp01" = "COD_ANIMAL"))
 
+# Mostar vista previa
+head(ganaderia_produccion)
 ```
-La tabla anterior se encuentra desagregada por hogar y tipo de animal. Para obtener la información de la producción y el valor económico de ésta, se necesita calcular el monto total vendido. En la base de datos este se encuentra reportado por cabeza o monto total. En este sentido el siguiente codigo crea un campo con el monto total.
+La tabla anterior se encuentra desagregada por hogar y tipo de animal. Para obtener la información de la producción y el valor económico de ésta, se necesita calcular el monto total vendido. En la base de datos este se encuentra reportado por cabeza o monto total. En este sentido el siguiente código crea un campo con el monto total.
 
 ```{r}
 # Esta función calcula el monto total
@@ -289,10 +302,13 @@ ganaderia_produccion <- ganaderia_produccion %>%
                                                             s7c7dp02,  # num animales vendidos en el periodo
                                                             s7c7dp03b) # 01 venta por cabeza o 02 venta total
                                )
+
+# Mostrar vista previa
+head(ganaderia_produccion)
 ```
 
 
-El siguiente codigo genera la tabla final de la producción del sector ganadero. La información presentada corresponde al número y monto de la venta de animales agrupado por hogar y tipo de animal. Cuando el valor de la venta es cero es porque los hogares no vendieron animales de ese grupo.
+El siguiente código genera la tabla final de la producción del sector ganadero. La información presentada corresponde al número y monto de la venta de animales agrupado por hogar y tipo de animal.
 
 ```{r}
 valorProduccionGanadera <- ganaderia_produccion %>% 
@@ -312,7 +328,11 @@ ganaderia_produccion <- left_join(valorProduccionGanadera, animalesVendidos, by 
 head(ganaderia_produccion,10)
 
 guardarTablaProcesada(ganaderia_produccion)
+
 ```
+
+En la tabla anterior se calculó el ingreso proveniente de la venta de animales, asi como la cantidad animales vendidos. Cuando el valor de ambas variables es cero, es porque los hogares no vendieron animales de ese grupo.
+
 
 #### Mano de Obra (Labor)
 
@@ -346,7 +366,9 @@ Debido a que la tabla **Produccion_ganade_ta** reporta los resultados por miembr
 Para cada una de estas nuevas tablas generadas:
 
 2. Filtrar la pregunta de si hubo miembros del hogar que atendieron animales / personal contratado para atender animales.
-3. Convertir de formato de columnas a formato de renglones la información de "horas y minutos", "codigo horas y minutos", "número de días a la semana" y "número de días al mes" que vienen reportadas por miembro del hogar A, B, C, D y E.
+
+3. Convertir de formato de columnas a formato de renglones la información de "horas y minutos", "código horas y minutos", "número de días a la semana" y "número de días al mes" que vienen reportadas por miembro del hogar A, B, C, D y E.
+
 4. Calcular las horas de trabajo dedicadas por hogar y grupo de animal por día, semana, mes y año.
 
 **a) Mano de obra de miembros del hogar**
@@ -472,7 +494,8 @@ ganaderia_household_labor_code_months  <- prod_ganade_ta %>%
   
                                     mutate_at(vars("cons","edo","mun","loc", "s7c7gp01", "householdMember", "member"),funs(as.character))
 ```
-Una vez que se cuentan con las 4 tablas estas se deben cruzar para formar una sola tabla llamada ** labor ** . El cruce se debe hacer en 4 etapas. Primero se hace un join entre las tablas horas y minutos que se llamará labor; después en la nueva tabla labor se hace un join con el código horas y minutos; después entre labor y días a la semana; y finalmente entre labor y el número de meses al año.
+
+Una vez que se cuentan con las 4 tablas estas se deben cruzar para formar una sola tabla llamada ** labor ** . El cruce se debe hacer en 4 etapas. Primero se hace un JOIN entre las tablas horas y minutos que se llamará labor; después en la nueva tabla labor se hace un JOIN con el código horas y minutos; después entre labor y días a la semana; y finalmente entre labor y el número de meses al año.
 
 ```{r}
 # Joins para formar una sola tabla de labor a partir de las cuatro tablas extraídas.
@@ -488,6 +511,21 @@ ganaderia_household_labor <- left_join(ganaderia_household_labor, ganaderia_hous
 ganaderia_household_labor <- left_join(ganaderia_household_labor, cat_gpo_animal, by = c("s7c7gp01" ="COD_GPO"))
 
 ```
+
+Una vez que se realizados los JOINS se obtiene una tabla única con toda la información relevante. El siguiente paso es extraer solo los campos necesarios que se alimentan al modelo:
+
+* Clave hogar
+* Estado
+* Municipio
+* Localidad
+* Clave del grupo del animal
+* Nombre del grupo animal
+* Miembro de la familia dedicado a la actividad
+* # horas or minutos
+* clave horas o minutos
+* días
+* meses
+
 ```{r}
 # Extracción de campos relevantes
 ganaderia_household_labor <-  select(ganaderia_household_labor, 
@@ -505,7 +543,7 @@ ganaderia_household_labor <-  select(ganaderia_household_labor,
                              arrange(cons, s7c7gp01, member)
 ```
 
-Una vez hechos los joins en la tabla labor, ahora es posible calcular para cada miembro del hogar el número de horas que le dedican a cada grupo animal.
+Una vez hechos los JOINS en la tabla labor, ahora es posible calcular para cada miembro del hogar el número de horas que le dedican a cada grupo animal.
 
 ```{r}
 # Función para construir un solo campo de tiempo en horas día
@@ -542,7 +580,6 @@ ganaderia_household_labor <- left_join(ganaderia_household_labor, cat_municipio,
 head(ganaderia_household_labor,10)
 ```
 
-
 Finalmente, se agrega la información de la tabla por hogar y grupo animal.
 
 ```{r}
@@ -563,7 +600,9 @@ head(labor, 10)
 nrow(labor)
 ```
 
-Tabla resumen:
+El cuadro anterior muestra un extracto de la base de datos limpia de **a) Mano de obra de miembros del hogar** . La base de datos está organizada por hogar, grupo animal y horas al año dedicadas a la ganadería.
+
+A continuación se muestra una tabla resumen del número de horas de mano de obra de los hogares dedicadas a la gandaería por grupo animal:
 
 ```{r}
 # Cuadro resumen
@@ -572,7 +611,7 @@ labor %>% group_by(grupo_animal) %>% summarise(horas_anuales = sum(horas_anuales
 
 **b) Mano de obra contratada por el hogar** 
 
-Para obtener el monto total de horas contratadas por el hogar se realiza un proceso similar al de la sección anterior. Se definió una función para calcular el número total de horas en función del número de trabajadores, el monto, el número de meses trabajados y la frecuencia del pago que reportó el jefe del hogar.
+Para obtener el monto total de horas contratadas por el hogar se realiza un proceso similar al de la sección anterior. Se definió una función para calcular el número total de horas a partir del número de trabajadores, el monto, el número de meses trabajados y la frecuencia del pago que reportó el jefe del hogar.
 
 ```{r}
 # Función que permite calcular el pago anual del total de hombres contratados
@@ -625,85 +664,47 @@ ganaderia_trabajo_contratado  <- prod_ganade_ta %>%
                                                                                       s7c7gp10, #meses 
                                                                                       s7c7gp09_c)) #frecuencia
 
-```
-
-Tabla de resultados.
-
-```{r}
 #Guardar la tabla de factores de producción de la ganadería en la carpeta Bases_Hogares_Procesadas 
 guardarTablaProcesada(ganaderia_trabajo_contratado)
 
-# Mostrar las primeras diez filas
-head(ganaderia_trabajo_contratado,10)
 ```
 
-
-s7c7hp01,      # Código de grupo de animal
-s7c7hp02,      # Acceso a PROGAN, si (1) no (2)
-s7c7hp03,      # Cantidad recibida en pesos PROGAN    
-s7c7hp06,      # Instalaciones para animales (P.ej. corrales,establos), si (1) no (2)
-s7c7hp07,      # Gasto para mantenimiento de instalaciones, en pesos
-s7c7hp08,      # lugar del gasto, en la loc. (1), otra loc. (2), USA (3), no sabe (888)
-s7c7hp09_lc,   # Clave de la localidad
-s7c7hp10_mc,   # Clave del municipio
-s7c7hp11_edo   # Estado 
-
-**Productos_ganade**
-
-En esta tercera base se incluyen preguntas de los siguientes cuadros:
-Cuadro 7I. Productos de orígen animal
-Cuadro 7J. Almacenaje y empaque de productos de orígen animal
+Una vez calculado el pago anual de cada uno de los hogares por tipo de animal, se genera la tabla final. Se hacen los joins de los catálogos, se renombran los campos de interés, se agrupa por hogar, estado, municipio, localidad y grupo animal.
 
 ```{r}
-prod_ganade <- procesarSTATA("Productos_ganade")
-names(prod_ganade)
+# Agregación de la tabla trabajo para dar formato final.
+hired_labor <- ganaderia_trabajo_contratado %>%
+         
+         group_by(cons, edo, mun, loc, s7c7gp01) %>% 
+  
+         summarise(pago_anual = sum(pagoAnual, na.rm = TRUE)) %>%
+  
+         arrange(s7c7gp01)
+
+hired_labor <- left_join(hired_labor,cat_estado, by = c("edo" = "CVE_ENT"))
+
+hired_labor <- left_join(hired_labor,cat_municipio, by = c("edo" = "CVE_ENT", "mun" = "CVE_MUN"))
+
+hired_labor <- hired_labor %>%
+                select(cons, edo, NOM_ENT, mun, NOM_MUN, loc, s7c7gp01, pago_anual) %>%
+                rename(cve_edo = edo,
+                       cve_mun = mun,
+                       cve_loc = loc,
+                       cve_animal = s7c7gp01)
+
+# Guardar tabla final
+guardarTablaProcesada(hired_labor)
+# Mostrar primeros 10 renglones de la tabla final
+head(hired_labor, 10)
 ```
+
+A continuación se muestra un resumen del pago anual por clave animal. Es preciso mencionar que para esta pregunta la clave de los animales presenta un nivel de agregación superior.
+
 ```{r}
-ganaderia_productos  <- prod_ganade %>%
-                                    select (cons,          # Número de cuestionario
-                                           edo,            # Clave estado
-                                           mun,            # Clave de municipio
-                                           loc,            # Clave de localidad
-                                           animal,         # Tipo de animales en el hogar
-                                           s7c7ip01,       # Cantidad de animales en el hogar
-                                           s7c7ip_2,       # Código de producto
-                                           s7c7ip02,       # Los animales produjeron, si (1) no (2)
-                                           s7c7ip03,       # Número de meses que produjeron
-                                           s7c7ip04a,      # Promedio del número de unidades producidas al mes
-                                           s7c7ip04b,      # Unidades de producción (kilos,piezas,litros,etc.)
-                                           s7c7ip05a,      # Promedio de unidades utilizadas en autoconsumo
-                                           s7c7ip05b,      # Unidades de consumo (kilos,piezas,litros,etc.)
-                                           s7c7ip06a,      # Costo del producto en caso de haberlo comprado
-                                           s7c7ip06b,      # Unidades de consumo (kilos,piezas, litros,etc.)
-                                           s7c7ip07,       # Vendieron el producto, si (1) no (2)
-                                           s7c7ip08a,      # Promedio de unidades vendidas
-                                           s7c7ip08b,      # Unidades de producción (kilos,piezas,litros,etc.)
-                                           s7c7ip09a,      # Precio al que se vendió el producto
-                                           s7c7ip09b,      # Unidades de venta (kilos,piezas,litros,etc.)
-                                           s7c7ip10,       # Lugar de venta, dentro loc. (1), fuera loc. (2)
-                                           s7c7ip11,       # A quién se vendió el producto
-                                           s7c7ip12_lc,    # Código de la localidad donde se vendio
-                                           s7c7ip13_mc,    # Código del mpio. donde se vendio
-                                           s7c7ip14_edo,   # Estado donde se vendio
-                                           s7c7ip15,       # Costos de transporte, en pesos
-                                           s7c7ip15_c,     # Código, mes (1) total (2)
-                                           s7c7jp01,       # Código de producto
-                                           s7c7jp02,       # Se produjo algo en el hogar, si (1) no (2)
-                                           s7c7jp03,       # El producto fue almacenado, si (1) no (2)
-                                           s7c7jp04,       # Se pagó por almacenarlo, si (1) no (2)
-                                           s7c7jp05,       # Cantidad pagada por almacenar, en pesos
-                                           s7c7jp06,       # Dónde se almacenó el producto
-                                           s7c7jp07,       # Se echó a perder el producto, si (1) no (2)
-                                           s7c7jp08a,      # Unidades de producto perdidas
-                                           s7c7jp08b,      # Unidad de medida (kilos,piezas,litros,etc.)
-                                           s7c7jp08c,      # Cantidad de kilos en la medida
-                                           s7c7jp09,       # A qué precio pudo venderse el producto caducado
-                                           s7c7jp09_c,     # Unidad de medida (Kilos,piezas,litros,etc.)
-                                           s7c7jp10       # Costo de insumos para almacenaje o venta,en pesos
-                                            )
+hired_labor %>% group_by(cve_animal) %>% summarise(pago_anual = sum(pago_anual)) %>% arrange(desc(pago_anual))
+```
 
-#Guardar la tabla de productos derivados de la ganadería en la carpeta Bases_Hogares_Procesadas 
-guardarTablaProcesada(ganaderia_productos)
+                               
+## Siguientes pasos
 
-```                                        
-
+En este documento se ha presentado el procedimiento para procesar y limpiar la ENCHOR y obtener la informción relevante para el MARCEG. Como ejemplo se utilizó la ganadería, una de las actividades productivas de la economía rural. Utilizando la misma lógica se pueden obtener el resto de las actividades y las variables de interés. 
